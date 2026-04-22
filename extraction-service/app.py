@@ -73,7 +73,8 @@ def get_converter():
 @app.post("/extract")
 async def extract(
     file: UploadFile = File(...),
-    api_key: str = Header(None, alias="Api-Key")
+    api_key: str = Header(None, alias="Api-Key"),
+    extraction_engine: str | None = Header(None, alias="Extraction-Engine")
 ):
     """
     Extract tables and text from a financial document.
@@ -123,7 +124,8 @@ async def extract(
             len(content),
         )
         started = time.time()
-        extraction_result = _extract_content(content, file.content_type)
+        requested_engine = _resolve_extraction_engine(extraction_engine)
+        extraction_result = _extract_content(content, file.content_type, requested_engine)
 
         markdown_tables = extraction_result["markdown"]
         page_count = extraction_result["page_count"]
@@ -149,6 +151,8 @@ async def extract(
                 "engine": extraction_result["engine"]
             }
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Extraction failed")
         raise HTTPException(
@@ -156,7 +160,17 @@ async def extract(
             detail=f"Extraction failed: {str(e)}"
         )
 
-def _extract_content(content, content_type):
+def _resolve_extraction_engine(requested_engine):
+    """Resolve and validate the extraction engine for this request."""
+    engine = (requested_engine or EXTRACTION_ENGINE).strip().lower()
+    if engine not in {"auto", "native_pdf", "docling"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Extraction-Engine must be one of: auto, native_pdf, docling"
+        )
+    return engine
+
+def _extract_content(content, content_type, extraction_engine):
     """
     Extract text from native PDFs before invoking Docling.
 
@@ -164,23 +178,23 @@ def _extract_content(content, content_type):
     avoids loading Docling's heavier model stack on small instances, while still
     preserving Docling as the fallback path for scanned documents and images.
     """
-    if content_type == "application/pdf" and EXTRACTION_ENGINE in {"auto", "native_pdf"}:
+    if content_type == "application/pdf" and extraction_engine in {"auto", "native_pdf"}:
         try:
             native_result = _extract_native_pdf(content)
         except Exception:
             logger.exception("Native PDF extraction failed")
-            if EXTRACTION_ENGINE == "native_pdf":
+            if extraction_engine == "native_pdf":
                 raise
             native_result = {"markdown": "", "engine": "native_pdf", "page_count": 0, "status": "FAILED"}
 
-        if EXTRACTION_ENGINE == "native_pdf" or len(native_result["markdown"]) >= NATIVE_PDF_MIN_CHARS:
+        if extraction_engine == "native_pdf" or len(native_result["markdown"]) >= NATIVE_PDF_MIN_CHARS:
             return native_result
         logger.info(
             "Native PDF extraction returned only %s chars; falling back to Docling",
             len(native_result["markdown"]),
         )
 
-    if EXTRACTION_ENGINE == "native_pdf":
+    if extraction_engine == "native_pdf":
         raise ValueError("Native PDF extraction is only available for application/pdf files")
 
     doc_result = _convert_document(content, content_type)

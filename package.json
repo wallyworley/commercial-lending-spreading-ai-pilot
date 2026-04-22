@@ -9,6 +9,7 @@
     "report": "node src/report.js",
     "scorecard": "node src/scorecard.js",
     "test:extract:income": "node scripts/testRenderIncomeStatementExtract.js",
+    "test:extract:poor-scan": "node scripts/testRenderPoorScanExtract.js",
     "test": "node --test"
   },
   "engines": {
