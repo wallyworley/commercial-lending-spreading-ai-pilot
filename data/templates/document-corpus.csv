@@ -1,0 +1,3 @@
+document_id,borrower,loan_or_opportunity,document_type,statement_type,fiscal_period,scenario_type,file_location_reference,source_system,document_store,ncino_spreading_mode,contains_confidential_data,notes
+DOC-001,Example Borrower,LOAN-001,audited_financials,income_statement,FY2025,clean_native_pdf,confidential://replace-with-bank-location,ncino_document_manager,ncino_document_manager,automated,true,Template row only
+

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiFunction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Retrieves certified spread line items explicitly selected for report inclusion (Include_In_Report__c = true). Use this to ground a credit memo narrative. Do not generate narrative content from outside the facts returned by this action.</description>
+    <masterLabel>Get Selected Report Facts</masterLabel>
+    <invocationTarget>GetSelectedReportFacts</invocationTarget>
+    <invocationTargetType>apex</invocationTargetType>
+</GenAiFunction>

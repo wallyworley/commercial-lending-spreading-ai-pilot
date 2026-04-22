@@ -1,0 +1,3 @@
+case_id,borrower,loan_or_opportunity,document_id,statement_type,fiscal_period,normalized_line,manual_value,material,analyst,certification_timestamp,source_page,source_coordinates,notes
+CASE-001,Example Borrower,LOAN-001,DOC-001,income_statement,FY2025,revenue,1000000,true,senior-analyst@example.bank,2026-04-19T12:00:00Z,3,"x1=10,y1=20,x2=40,y2=25",Template row only
+

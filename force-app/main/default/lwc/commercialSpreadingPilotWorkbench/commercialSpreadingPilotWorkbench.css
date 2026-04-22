@@ -1,0 +1,193 @@
+.workbench {
+    position: relative;
+}
+
+.actions {
+    align-items: flex-end;
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 1.55rem;
+}
+
+.summary-band {
+    background: var(--slds-g-color-success-container-1, #f3f8f2);
+    border-left: 4px solid var(--slds-g-color-success-base-50, #2e844a);
+    padding: var(--slds-g-spacing-3, 0.75rem) var(--slds-g-spacing-4, 1rem);
+}
+
+.section-heading {
+    margin-bottom: var(--slds-g-spacing-3, 0.75rem);
+}
+
+.empty-state {
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+    border: 1px solid var(--slds-g-color-border-base-1, #dddbda);
+    border-radius: 4px;
+    padding: var(--slds-g-spacing-4, 1rem);
+}
+
+/* ── Spread Review Grid ── */
+
+.spread-grid-container {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.spread-grid {
+    table-layout: auto;
+    min-width: 100%;
+}
+
+.col-check {
+    width: 2.5rem;
+    text-align: center;
+}
+
+.col-line {
+    min-width: 14rem;
+}
+
+.col-period {
+    min-width: 7rem;
+}
+
+.col-material {
+    min-width: 6rem;
+    text-align: center;
+}
+
+.col-path {
+    min-width: 11rem;
+    vertical-align: top;
+}
+
+.col-actions {
+    min-width: 9rem;
+    white-space: nowrap;
+}
+
+/* ── Path Cell (stacked card within a table cell) ── */
+
+.path-cell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--slds-g-spacing-1, 0.25rem);
+    font-size: var(--slds-g-font-scale-minus-2, 0.75rem);
+}
+
+.path-cell__row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--slds-g-spacing-2, 0.5rem);
+}
+
+.path-cell__label {
+    color: var(--slds-g-color-neutral-base-50, #706e6b);
+    flex-shrink: 0;
+}
+
+.path-cell__value {
+    font-weight: 500;
+    text-align: right;
+}
+
+/* Variance direction colors */
+
+.variance--positive {
+    color: var(--slds-g-color-error-base-40, #c23934);
+}
+
+.variance--negative {
+    color: var(--slds-g-color-success-base-40, #2e844a);
+}
+
+/* ── Certification status badges ── */
+
+.cert-status--certified {
+    display: inline-block;
+    padding: 0 var(--slds-g-spacing-2, 0.5rem);
+    border-radius: 0.75rem;
+    font-size: var(--slds-g-font-scale-minus-2, 0.75rem);
+    background: var(--slds-g-color-success-container-1, #ecf9f0);
+    color: var(--slds-g-color-success-base-40, #2e844a);
+    border: 1px solid var(--slds-g-color-success-base-50, #2e844a);
+}
+
+.cert-status--rejected {
+    display: inline-block;
+    padding: 0 var(--slds-g-spacing-2, 0.5rem);
+    border-radius: 0.75rem;
+    font-size: var(--slds-g-font-scale-minus-2, 0.75rem);
+    background: var(--slds-g-color-error-container-1, #fdf0ef);
+    color: var(--slds-g-color-error-base-40, #c23934);
+    border: 1px solid var(--slds-g-color-error-base-40, #c23934);
+}
+
+.cert-status--exception {
+    display: inline-block;
+    padding: 0 var(--slds-g-spacing-2, 0.5rem);
+    border-radius: 0.75rem;
+    font-size: var(--slds-g-font-scale-minus-2, 0.75rem);
+    background: var(--slds-g-color-warning-container-1, #fef5e4);
+    color: var(--slds-g-color-warning-base-40, #9c6b0c);
+    border: 1px solid var(--slds-g-color-warning-base-40, #9c6b0c);
+}
+
+.cert-status--material {
+    display: inline-block;
+    padding: 0 var(--slds-g-spacing-2, 0.5rem);
+    border-radius: 0.75rem;
+    font-size: var(--slds-g-font-scale-minus-2, 0.75rem);
+    background: var(--slds-g-color-brand-container-1, #eef4ff);
+    color: var(--slds-g-color-brand-base-50, #1b5fb2);
+    border: 1px solid var(--slds-g-color-brand-base-50, #1b5fb2);
+}
+
+.cert-status--none {
+    color: var(--slds-g-color-neutral-base-50, #706e6b);
+    font-size: var(--slds-g-font-scale-minus-2, 0.75rem);
+}
+
+/* ── Bulk action bar ── */
+
+.bulk-bar {
+    align-items: center;
+    background: var(--slds-g-color-brand-container-1, #eef4ff);
+    border: 1px solid var(--slds-g-color-brand-base-50, #1b5fb2);
+    border-radius: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--slds-g-spacing-2, 0.5rem);
+    padding: var(--slds-g-spacing-2, 0.5rem) var(--slds-g-spacing-3, 0.75rem);
+}
+
+/* ── Pagination ── */
+
+.pagination-bar {
+    align-items: center;
+    display: flex;
+    gap: var(--slds-g-spacing-2, 0.5rem);
+    justify-content: flex-end;
+}
+
+/* ── Certification dialog ── */
+
+.dialog-line-list {
+    list-style: disc;
+    margin-left: var(--slds-g-spacing-4, 1rem);
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 48rem) {
+    .actions {
+        justify-content: flex-start;
+        padding-top: 0;
+    }
+
+    .pagination-bar {
+        justify-content: flex-start;
+    }
+}

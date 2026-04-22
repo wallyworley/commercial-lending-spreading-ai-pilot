@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiFunction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Re-queries live pilot run summary, scorecard results, and counts. Call this before answering any state-dependent question such as how many items remain uncertified, current scorecard pass/fail status, or latest exception routing. Agentforce does not automatically refresh context between turns.</description>
+    <masterLabel>Refresh Pilot Context</masterLabel>
+    <invocationTarget>RefreshPilotContext</invocationTarget>
+    <invocationTargetType>apex</invocationTargetType>
+</GenAiFunction>

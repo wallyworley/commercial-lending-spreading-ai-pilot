@@ -1,0 +1,18 @@
+{
+  "required" : [ ],
+  "unevaluatedProperties" : false,
+  "properties" : {
+    "pathResultIds" : {
+      "title" : "Path Result Ids",
+      "description" : "List of up to 20 Spread_Path_Result__c record IDs from the current pilot run. Only certified or exception-approved results will be returned.",
+      "maxItems" : 2000,
+      "items" : {
+        "lightning:type" : "lightning__textType"
+      },
+      "lightning:type" : "lightning__listType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    }
+  },
+  "lightning:type" : "lightning__objectType"
+}

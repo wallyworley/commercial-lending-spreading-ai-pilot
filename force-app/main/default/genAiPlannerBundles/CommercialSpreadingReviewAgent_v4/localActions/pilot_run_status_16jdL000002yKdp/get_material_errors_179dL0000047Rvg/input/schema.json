@@ -1,0 +1,21 @@
+{
+  "required" : [ ],
+  "unevaluatedProperties" : false,
+  "properties" : {
+    "maxRows" : {
+      "title" : "Max Rows",
+      "description" : "Maximum rows to return. Default 10.",
+      "lightning:type" : "lightning__integerType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "pilotRunId" : {
+      "title" : "Pilot Run Id",
+      "description" : "Salesforce Id of the Spread_Pilot_Run__c record to query.",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    }
+  },
+  "lightning:type" : "lightning__objectType"
+}

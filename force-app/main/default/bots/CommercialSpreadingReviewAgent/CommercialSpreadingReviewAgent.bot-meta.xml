@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bot xmlns="http://soap.sforce.com/2006/04/metadata">
+    <agentDSLEnabled>true</agentDSLEnabled>
+    <agentType>AgentforceEmployeeAgent</agentType>
+    <botMlDomain>
+        <label>Commercial Spreading Review Agent</label>
+        <name>CommercialSpreadingReviewAgent</name>
+    </botMlDomain>
+    <botSource>None</botSource>
+    <description>Internal Agentforce agent that helps commercial lending analysts review AI spreading pilot evidence. All answers are grounded in live Salesforce data from certified path results. Does not make credit decisions or introduce outside financial context.</description>
+    <label>Commercial Spreading Review Agent</label>
+    <logPrivateConversationData>false</logPrivateConversationData>
+    <richContentEnabled>true</richContentEnabled>
+    <sessionTimeout>0</sessionTimeout>
+    <type>InternalCopilot</type>
+</Bot>

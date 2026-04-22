@@ -1,0 +1,15 @@
+node_modules/
+.DS_Store
+coverage/
+dist/
+tmp/
+*.log
+.claude/
+.sf/
+.sfdx/
+.vscode/
+reports/
+force-app/main/default/aiAuthoringBundles/Banking_Agent*/
+force-app/main/default/aiAuthoringBundles/insurance_agentscript/
+data/pilot-results/*.csv
+data/confidential/

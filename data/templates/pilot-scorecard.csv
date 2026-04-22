@@ -1,0 +1,4 @@
+case_id,path,borrower,loan_or_opportunity,document_id,statement_type,fiscal_period,normalized_line,material,manual_value,candidate_value,manual_minutes,candidate_minutes,exception_flag,certified,error_type,notes
+CASE-001,ncino_automated_spreading,Example Borrower,LOAN-001,DOC-001,income_statement,FY2025,revenue,true,1000000,1000000,120,80,false,true,,Template row only
+CASE-001,salesforce_native_staging,Example Borrower,LOAN-001,DOC-001,income_statement,FY2025,revenue,true,1000000,1000000,120,80,false,true,,Template row only
+CASE-001,manual_ncino_control,Example Borrower,LOAN-001,DOC-001,income_statement,FY2025,revenue,true,1000000,1000000,120,120,false,true,,Template row only

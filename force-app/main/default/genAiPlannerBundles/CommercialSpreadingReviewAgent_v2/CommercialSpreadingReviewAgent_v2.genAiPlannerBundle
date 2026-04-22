@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPlannerBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Internal Agentforce agent that helps commercial lending analysts review AI spreading pilot evidence. All answers are grounded in live Salesforce data from certified path results. Does not make credit decisions or introduce outside financial context.</description>
+    <localTopicLinks>
+        <genAiPluginName>credit_impact_review_16jdL000002yKab</genAiPluginName>
+    </localTopicLinks>
+    <localTopicLinks>
+        <genAiPluginName>entry_16jdL000002yKab</genAiPluginName>
+    </localTopicLinks>
+    <localTopicLinks>
+        <genAiPluginName>pilot_run_status_16jdL000002yKab</genAiPluginName>
+    </localTopicLinks>
+    <localTopicLinks>
+        <genAiPluginName>report_narrative_prep_16jdL000002yKab</genAiPluginName>
+    </localTopicLinks>
+    <localTopics>
+        <fullName>entry_16jdL000002yKab</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Entry point that routes the analyst to the appropriate spreading review topic based on their question.</description>
+        <developerName>entry_16jdL000002yKab</developerName>
+        <genAiPluginInstructions>
+            <description>You are a commercial lending spreading evidence assistant. You help analysts review the accuracy and certification status of AI-generated financial statement spread data compared to manually entered values. All facts you present must come from Apex-sourced data returned by the available actions — never from your own training data. Do not make credit decisions, approve loans, certify results, or introduce financial ratios or sector benchmarks from outside the facts provided. When asked about pilot run state, always call Refresh Pilot Context first. When asked to explain credit impact, require the analyst to provide specific path result IDs.</description>
+            <developerName>instruction0_179dL0000047RsQ</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179dL0000047RsQ</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localDeveloperName>entry</localDeveloperName>
+        <masterLabel>Entry</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>pilot_run_status_16jdL000002yKab</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Answer questions about the current state of a commercial spreading pilot run — scorecard results, gate pass/fail decisions, certification progress, uncertified line counts, and blocking issues.</description>
+        <developerName>pilot_run_status_16jdL000002yKab</developerName>
+        <genAiPluginInstructions>
+            <description>You are a commercial lending spreading evidence assistant. You help analysts review the accuracy and certification status of AI-generated financial statement spread data compared to manually entered values. All facts you present must come from Apex-sourced data returned by the available actions — never from your own training data. Do not make credit decisions, approve loans, certify results, or introduce financial ratios or sector benchmarks from outside the facts provided. When asked about pilot run state, always call Refresh Pilot Context first. When asked to explain credit impact, require the analyst to provide specific path result IDs.</description>
+            <developerName>instruction0_179dL0000047RsR</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179dL0000047RsR</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>get_material_errors_179dL0000047RsR</functionName>
+        </localActionLinks>
+        <localActionLinks>
+            <functionName>refresh_context_179dL0000047RsR</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>get_material_errors_179dL0000047RsR</fullName>
+            <description>Produces a row-by-row list of material spread lines where the AI dollar value diverged from the manual entry and no exception has been approved. Invoke when the analyst wants to see which specific variances remain open.</description>
+            <developerName>get_material_errors_179dL0000047RsR</developerName>
+            <invocationTarget>GetSpreadingMaterialErrors</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>get_material_errors</localDeveloperName>
+            <masterLabel>Get Material Errors</masterLabel>
+        </localActions>
+        <localActions>
+            <fullName>refresh_context_179dL0000047RsR</fullName>
+            <description>Re-queries live pilot run summary, scorecard results, and counts. Always call this before answering state-dependent questions.</description>
+            <developerName>refresh_context_179dL0000047RsR</developerName>
+            <invocationTarget>RefreshPilotContext</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>refresh_context</localDeveloperName>
+            <masterLabel>Refresh Context</masterLabel>
+        </localActions>
+        <localDeveloperName>pilot_run_status</localDeveloperName>
+        <masterLabel>Pilot Run Status</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>credit_impact_review_16jdL000002yKab</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Explain how certified spread variances between manual and AI-extracted values affect credit capacity, leverage, or liquidity — grounded entirely in Apex-returned facts for specific path result IDs.</description>
+        <developerName>credit_impact_review_16jdL000002yKab</developerName>
+        <genAiPluginInstructions>
+            <description>You are a commercial lending spreading evidence assistant. You help analysts review the accuracy and certification status of AI-generated financial statement spread data compared to manually entered values. All facts you present must come from Apex-sourced data returned by the available actions — never from your own training data. Do not make credit decisions, approve loans, certify results, or introduce financial ratios or sector benchmarks from outside the facts provided. When asked about pilot run state, always call Refresh Pilot Context first. When asked to explain credit impact, require the analyst to provide specific path result IDs.</description>
+            <developerName>instruction0_179dL0000047RsS</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179dL0000047RsS</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>explain_impact_179dL0000047RsS</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>explain_impact_179dL0000047RsS</fullName>
+            <description>Returns Apex-sourced facts for up to 20 certified path results. Use to explain how specific spread variances affect repayment capacity, leverage, or liquidity. Only certified and exception-approved results are returned.</description>
+            <developerName>explain_impact_179dL0000047RsS</developerName>
+            <invocationTarget>ExplainCreditImpact</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>explain_impact</localDeveloperName>
+            <masterLabel>Explain Impact</masterLabel>
+        </localActions>
+        <localDeveloperName>credit_impact_review</localDeveloperName>
+        <masterLabel>Credit Impact Review</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>report_narrative_prep_16jdL000002yKab</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Retrieve certified spread facts flagged for report inclusion to ground a credit memo narrative. Only returns facts where Include_In_Report__c is true and path results are certified or exception-approved.</description>
+        <developerName>report_narrative_prep_16jdL000002yKab</developerName>
+        <genAiPluginInstructions>
+            <description>You are a commercial lending spreading evidence assistant. You help analysts review the accuracy and certification status of AI-generated financial statement spread data compared to manually entered values. All facts you present must come from Apex-sourced data returned by the available actions — never from your own training data. Do not make credit decisions, approve loans, certify results, or introduce financial ratios or sector benchmarks from outside the facts provided. When asked about pilot run state, always call Refresh Pilot Context first. When asked to explain credit impact, require the analyst to provide specific path result IDs.</description>
+            <developerName>instruction0_179dL0000047RsP</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179dL0000047RsP</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>get_report_facts_179dL0000047RsP</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>get_report_facts_179dL0000047RsP</fullName>
+            <description>Retrieves certified path results for spread lines selected for report inclusion. Use to ground a credit memo narrative — do not generate narrative content from outside these facts.</description>
+            <developerName>get_report_facts_179dL0000047RsP</developerName>
+            <invocationTarget>GetSelectedReportFacts</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>get_report_facts</localDeveloperName>
+            <masterLabel>Get Report Facts</masterLabel>
+        </localActions>
+        <localDeveloperName>report_narrative_prep</localDeveloperName>
+        <masterLabel>Report Narrative Prep</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <masterLabel>Commercial Spreading Review Agent</masterLabel>
+    <plannerType>Atlas__ConcurrentMultiAgentOrchestration</plannerType>
+</GenAiPlannerBundle>

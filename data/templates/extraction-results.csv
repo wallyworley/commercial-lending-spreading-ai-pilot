@@ -1,0 +1,3 @@
+case_id,path,borrower,loan_or_opportunity,document_id,statement_type,fiscal_period,source_page,source_coordinates,extracted_raw_value,normalized_line,confidence,exception_reason,reviewer,certification_timestamp,final_spread_reference,status,notes
+CASE-001,ncino_automated_spreading,Example Borrower,LOAN-001,DOC-001,income_statement,FY2025,3,"x1=10,y1=20,x2=40,y2=25","$1,000,000",revenue,0.99,,senior-analyst@example.bank,2026-04-19T12:15:00Z,SPREAD-001,certified,Template row only
+

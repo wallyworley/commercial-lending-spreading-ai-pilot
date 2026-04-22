@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiFunction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Retrieves uncaught material spread variances for a selected commercial lending spreading pilot run. Use this to identify which values need correction or exception routing.</description>
+    <masterLabel>Get Spreading Material Errors</masterLabel>
+    <invocationTarget>GetSpreadingMaterialErrors</invocationTarget>
+    <invocationTargetType>apex</invocationTargetType>
+</GenAiFunction>

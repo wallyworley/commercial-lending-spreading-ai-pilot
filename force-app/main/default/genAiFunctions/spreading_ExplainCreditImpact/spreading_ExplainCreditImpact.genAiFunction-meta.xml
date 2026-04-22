@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiFunction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Returns Apex-sourced spread facts for up to 20 certified path results. Use these facts to explain how specific spread variances affect repayment capacity, leverage, or liquidity. Explain only using the facts returned — do not introduce financial context from outside this response.</description>
+    <masterLabel>Explain Credit Impact</masterLabel>
+    <invocationTarget>ExplainCreditImpact</invocationTarget>
+    <invocationTargetType>apex</invocationTargetType>
+</GenAiFunction>

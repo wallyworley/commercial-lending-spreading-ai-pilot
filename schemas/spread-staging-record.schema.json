@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.bank/commercial-lending-spreading-ai-pilot/spread-staging-record.schema.json",
+  "title": "Draft Spread Staging Record",
+  "type": "object",
+  "required": [
+    "borrowerId",
+    "loanOrOpportunityId",
+    "documentId",
+    "statementType",
+    "fiscalPeriod",
+    "sourcePage",
+    "extractedRawValue",
+    "normalizedSpreadLine",
+    "status"
+  ],
+  "properties": {
+    "borrowerId": { "type": "string", "minLength": 1 },
+    "loanOrOpportunityId": { "type": "string", "minLength": 1 },
+    "documentId": { "type": "string", "minLength": 1 },
+    "statementType": {
+      "type": "string",
+      "enum": ["balance_sheet", "income_statement", "cash_flow", "tax_return", "schedule", "other"]
+    },
+    "fiscalPeriod": { "type": "string", "minLength": 1 },
+    "sourcePage": { "type": "integer", "minimum": 1 },
+    "sourceCoordinates": { "type": "string" },
+    "extractedRawValue": { "type": "string", "minLength": 1 },
+    "normalizedSpreadLine": { "type": "string", "minLength": 1 },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "exceptionReason": { "type": "string" },
+    "reviewerId": { "type": "string" },
+    "certificationTimestamp": { "type": "string", "format": "date-time" },
+    "finalSpreadReference": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "exception", "certified", "rejected"]
+    }
+  },
+  "additionalProperties": false
+}
+
