@@ -17,3 +17,7 @@ services:
         value: "90"
       - key: DOCLING_NUM_THREADS
         value: "1"
+      - key: EXTRACTION_ENGINE
+        value: "auto"
+      - key: NATIVE_PDF_MIN_CHARS
+        value: "40"

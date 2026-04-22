@@ -2,6 +2,7 @@ import os
 import tempfile
 import logging
 import time
+from io import BytesIO
 from pathlib import Path
 from fastapi import FastAPI, File, UploadFile, Header, HTTPException
 from fastapi.responses import JSONResponse
@@ -17,6 +18,8 @@ DOCLING_ENABLE_OCR = os.getenv("DOCLING_ENABLE_OCR", "false").lower() == "true"
 DOCLING_TABLE_STRUCTURE = os.getenv("DOCLING_TABLE_STRUCTURE", "false").lower() == "true"
 DOCLING_DOCUMENT_TIMEOUT = float(os.getenv("DOCLING_DOCUMENT_TIMEOUT", "90"))
 DOCLING_NUM_THREADS = int(os.getenv("DOCLING_NUM_THREADS", "1"))
+EXTRACTION_ENGINE = os.getenv("EXTRACTION_ENGINE", "auto").lower()
+NATIVE_PDF_MIN_CHARS = int(os.getenv("NATIVE_PDF_MIN_CHARS", "40"))
 FILE_SUFFIX_BY_CONTENT_TYPE = {
     "application/pdf": ".pdf",
     "image/jpeg": ".jpg",
@@ -120,18 +123,18 @@ async def extract(
             len(content),
         )
         started = time.time()
-        doc_result = _convert_document(content, file.content_type)
+        extraction_result = _extract_content(content, file.content_type)
 
-        markdown_tables = _extract_markdown(doc_result)
-        page_count = _page_count(doc_result)
+        markdown_tables = extraction_result["markdown"]
+        page_count = extraction_result["page_count"]
         job_id = _generate_job_id(file.filename)
         elapsed_seconds = round(time.time() - started, 3)
-        result_status = getattr(doc_result, "status", None)
         logger.info(
-            "Extraction completed: filename=%s elapsed_seconds=%s status=%s markdown_length=%s",
+            "Extraction completed: filename=%s elapsed_seconds=%s engine=%s status=%s markdown_length=%s",
             file.filename,
             elapsed_seconds,
-            result_status,
+            extraction_result["engine"],
+            extraction_result["status"],
             len(markdown_tables),
         )
 
@@ -142,7 +145,8 @@ async def extract(
                 "page_count": page_count,
                 "job_id": job_id,
                 "elapsed_seconds": elapsed_seconds,
-                "conversion_status": str(result_status) if result_status is not None else None
+                "conversion_status": extraction_result["status"],
+                "engine": extraction_result["engine"]
             }
         )
     except Exception as e:
@@ -151,6 +155,61 @@ async def extract(
             status_code=500,
             detail=f"Extraction failed: {str(e)}"
         )
+
+def _extract_content(content, content_type):
+    """
+    Extract text from native PDFs before invoking Docling.
+
+    The Render smoke test uses programmatic PDFs. Pulling their text layer first
+    avoids loading Docling's heavier model stack on small instances, while still
+    preserving Docling as the fallback path for scanned documents and images.
+    """
+    if content_type == "application/pdf" and EXTRACTION_ENGINE in {"auto", "native_pdf"}:
+        try:
+            native_result = _extract_native_pdf(content)
+        except Exception:
+            logger.exception("Native PDF extraction failed")
+            if EXTRACTION_ENGINE == "native_pdf":
+                raise
+            native_result = {"markdown": "", "engine": "native_pdf", "page_count": 0, "status": "FAILED"}
+
+        if EXTRACTION_ENGINE == "native_pdf" or len(native_result["markdown"]) >= NATIVE_PDF_MIN_CHARS:
+            return native_result
+        logger.info(
+            "Native PDF extraction returned only %s chars; falling back to Docling",
+            len(native_result["markdown"]),
+        )
+
+    if EXTRACTION_ENGINE == "native_pdf":
+        raise ValueError("Native PDF extraction is only available for application/pdf files")
+
+    doc_result = _convert_document(content, content_type)
+    result_status = getattr(doc_result, "status", None)
+    return {
+        "engine": "docling",
+        "markdown": _extract_markdown(doc_result),
+        "page_count": _page_count(doc_result),
+        "status": str(result_status) if result_status is not None else None,
+    }
+
+def _extract_native_pdf(content):
+    """Extract the embedded text layer from a PDF with a lightweight parser."""
+    from pypdf import PdfReader
+
+    reader = PdfReader(BytesIO(content))
+    pages = []
+    for page_number, page in enumerate(reader.pages, start=1):
+        page_text = page.extract_text() or ""
+        if page_text.strip():
+            pages.append(f"## Page {page_number}\n\n{page_text.strip()}")
+
+    markdown = "\n\n".join(pages)
+    return {
+        "engine": "native_pdf",
+        "markdown": markdown if markdown.strip() else "No content extracted",
+        "page_count": len(reader.pages),
+        "status": "SUCCESS" if markdown.strip() else "NO_TEXT_LAYER",
+    }
 
 def _convert_document(content, content_type):
     """
@@ -214,8 +273,15 @@ async def health():
         "docling_enable_ocr": DOCLING_ENABLE_OCR,
         "docling_table_structure": DOCLING_TABLE_STRUCTURE,
         "docling_document_timeout": DOCLING_DOCUMENT_TIMEOUT,
-        "docling_num_threads": DOCLING_NUM_THREADS
+        "docling_num_threads": DOCLING_NUM_THREADS,
+        "extraction_engine": EXTRACTION_ENGINE,
+        "native_pdf_min_chars": NATIVE_PDF_MIN_CHARS
     }
+
+@app.get("/")
+async def root():
+    """Lightweight root endpoint for platform probes."""
+    return {"status": "healthy", "service": "spread-docling-service"}
 
 if __name__ == "__main__":
     import uvicorn
