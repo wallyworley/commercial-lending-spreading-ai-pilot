@@ -15,6 +15,7 @@ const endpoint = normalizeExtractUrl(process.env.EXTRACT_URL || 'https://spread-
 const apiKey = process.env.DOCLING_API_KEY || process.env.SPREAD_DOCLING_API_KEY;
 const pdfPath = process.env.POOR_SCAN_PDF || defaultPdfPath;
 const extractionEngine = process.env.POOR_SCAN_EXTRACTION_ENGINE || 'docling';
+const timeoutMs = Number(process.env.POOR_SCAN_TIMEOUT_MS || 300000);
 
 const expectedTerms = [
   'Cobalt Components Co.',
@@ -47,14 +48,33 @@ const form = new FormData();
 form.append('file', new Blob([pdf], { type: 'application/pdf' }), path.basename(pdfPath));
 
 const started = Date.now();
-const response = await fetch(endpoint, {
-  method: 'POST',
-  headers: {
-    'Api-Key': apiKey,
-    'Extraction-Engine': extractionEngine
-  },
-  body: form
-});
+const controller = new AbortController();
+const timeout = setTimeout(() => controller.abort(), timeoutMs);
+let response;
+try {
+  response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Api-Key': apiKey,
+      'Extraction-Engine': extractionEngine
+    },
+    body: form,
+    signal: controller.signal
+  });
+} catch (error) {
+  const elapsedMs = Date.now() - started;
+  console.error(`Poor-scan extraction request failed before response headers after ${elapsedMs}ms.`);
+  console.error(`Requested engine: ${extractionEngine}`);
+  console.error(`Timeout setting: ${timeoutMs}ms`);
+  console.error(`Error: ${error.cause?.code || error.name || error.message}`);
+  if (extractionEngine === 'docling') {
+    console.error('\nThe forced Docling/OCR lane is taking longer than this HTTP smoke test allows.');
+    console.error('That confirms the native PDF lane works, while Docling needs a larger runtime or an async/background job pattern.');
+  }
+  process.exit(1);
+} finally {
+  clearTimeout(timeout);
+}
 const elapsedMs = Date.now() - started;
 const bodyText = await response.text();
 
@@ -90,6 +110,7 @@ console.log(JSON.stringify({
   responseEngine: payload.engine,
   conversionStatus: payload.conversion_status,
   elapsedMs,
+  timeoutMs,
   serviceElapsedSeconds: payload.elapsed_seconds,
   jobId: payload.job_id,
   pageCount: payload.page_count,
