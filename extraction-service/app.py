@@ -12,7 +12,13 @@ DOCLING_API_KEY = os.getenv("DOCLING_API_KEY", "dev-key-change-in-production")
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 ALLOWED_TYPES = {"application/pdf", "image/jpeg", "image/png"}
 
-converter = DocumentConverter()
+_converter = None
+
+def get_converter():
+    global _converter
+    if _converter is None:
+        _converter = DocumentConverter()
+    return _converter
 
 @app.post("/extract")
 async def extract(
@@ -61,7 +67,7 @@ async def extract(
     # Extract
     try:
         # Convert file to bytes
-        doc_result = converter.convert_bytes(
+        doc_result = get_converter().convert_bytes(
             content,
             file_type=_infer_document_type(file.content_type)
         )
