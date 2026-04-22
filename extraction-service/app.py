@@ -2,9 +2,6 @@ import os
 import json
 from fastapi import FastAPI, File, UploadFile, Header, HTTPException
 from fastapi.responses import JSONResponse
-from docling.document_converter import DocumentConverter
-from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
-from docling.pipeline.standard_ocr_pipeline import StandardOcrPipeline
 
 app = FastAPI(title="Spread Docling Extraction Service", version="1.0.0")
 
@@ -17,6 +14,7 @@ _converter = None
 def get_converter():
     global _converter
     if _converter is None:
+        from docling.document_converter import DocumentConverter
         _converter = DocumentConverter()
     return _converter
 
