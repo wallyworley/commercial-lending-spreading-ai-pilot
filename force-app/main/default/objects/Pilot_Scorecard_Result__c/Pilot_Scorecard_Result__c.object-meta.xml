@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Aggregated pass/fail scorecard metrics for one pilot run and spreading path.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>true</enableReports>
+    <label>Pilot Scorecard Result</label>
+    <nameField>
+        <displayFormat>SCR-{0000}</displayFormat>
+        <label>Pilot Scorecard Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Pilot Scorecard Results</pluralLabel>
+    <sharingModel>Private</sharingModel>
+</CustomObject>
+

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>One execution of the commercial financial spreading AI evidence pilot.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>true</enableReports>
+    <label>Spread Pilot Run</label>
+    <nameField>
+        <displayFormat>SPR-{0000}</displayFormat>
+        <label>Spread Pilot Run Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Spread Pilot Runs</pluralLabel>
+    <sharingModel>Private</sharingModel>
+</CustomObject>
+
