@@ -2,6 +2,9 @@ services:
   - type: web
     name: spread-docling-service
     runtime: docker
+    dockerfilePath: ./extraction-service/Dockerfile
+    dockerContext: ./extraction-service
+    healthCheckPath: /health
     plan: free
     envVars:
       - key: DOCLING_API_KEY

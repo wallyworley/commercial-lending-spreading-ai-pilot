@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-eng \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -15,4 +17,4 @@ RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -1,5 +1,6 @@
 import os
-import json
+import tempfile
+from pathlib import Path
 from fastapi import FastAPI, File, UploadFile, Header, HTTPException
 from fastapi.responses import JSONResponse
 
@@ -8,6 +9,11 @@ app = FastAPI(title="Spread Docling Extraction Service", version="1.0.0")
 DOCLING_API_KEY = os.getenv("DOCLING_API_KEY", "dev-key-change-in-production")
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 ALLOWED_TYPES = {"application/pdf", "image/jpeg", "image/png"}
+FILE_SUFFIX_BY_CONTENT_TYPE = {
+    "application/pdf": ".pdf",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+}
 
 _converter = None
 
@@ -64,15 +70,10 @@ async def extract(
 
     # Extract
     try:
-        # Convert file to bytes
-        doc_result = get_converter().convert_bytes(
-            content,
-            file_type=_infer_document_type(file.content_type)
-        )
+        doc_result = _convert_document(content, file.content_type)
 
-        # Extract tables in markdown format
-        markdown_tables = _extract_tables_as_markdown(doc_result)
-        page_count = len(doc_result.pages) if hasattr(doc_result, 'pages') else 1
+        markdown_tables = _extract_markdown(doc_result)
+        page_count = _page_count(doc_result)
         job_id = _generate_job_id(file.filename)
 
         return JSONResponse(
@@ -89,52 +90,50 @@ async def extract(
             detail=f"Extraction failed: {str(e)}"
         )
 
-def _infer_document_type(content_type):
-    """Map content type to Docling document type."""
-    if content_type == "application/pdf":
-        return "pdf"
-    elif content_type in ("image/jpeg", "image/png"):
-        return "image"
-    return "pdf"  # Default
-
-def _extract_tables_as_markdown(doc_result):
+def _convert_document(content, content_type):
     """
-    Extract tables from Docling document and format as markdown.
-    Returns markdown string with all tables found in the document.
+    Convert an uploaded document with Docling.
+
+    Docling's documented public API accepts local paths or URLs via
+    DocumentConverter.convert(). Writing the upload to a temporary file keeps us
+    off unstable internal byte-conversion APIs.
     """
-    markdown_output = []
-
-    for page_num, page in enumerate(doc_result.pages, 1):
-        for element in page.elements:
-            # Check if element is a table
-            if hasattr(element, 'data_cells') or element.__class__.__name__ == 'TableElement':
-                markdown_table = _table_to_markdown(element, page_num)
-                if markdown_table:
-                    markdown_output.append(markdown_table)
-
-    return "\n\n".join(markdown_output) if markdown_output else "No tables found"
-
-def _table_to_markdown(table_element, page_num):
-    """Convert a Docling table element to markdown format."""
+    suffix = FILE_SUFFIX_BY_CONTENT_TYPE.get(content_type, ".pdf")
+    temp_path = None
     try:
-        # Docling table structure: get rows and cells
-        if not hasattr(table_element, 'rows') or not table_element.rows:
-            return None
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            temp_file.write(content)
+            temp_path = Path(temp_file.name)
+        return get_converter().convert(temp_path)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
-        markdown_lines = [f"**Table from page {page_num}:**\n"]
+def _extract_markdown(doc_result):
+    """
+    Export Docling's structured document as Markdown.
 
-        for row in table_element.rows:
-            cells = [str(cell.text) if hasattr(cell, 'text') else str(cell) for cell in row.cells]
-            markdown_lines.append("| " + " | ".join(cells) + " |")
+    The downstream normalization prompt expects Markdown table structure. The
+    public export API is more stable than walking Docling's internal page and
+    element classes.
+    """
+    document = getattr(doc_result, "document", None)
+    if document is None:
+        return "No content extracted"
+    markdown = document.export_to_markdown()
+    return markdown if markdown.strip() else "No content extracted"
 
-            # Add header separator after first row
-            if row == table_element.rows[0]:
-                markdown_lines.append("|" + "|".join(["---" for _ in cells]) + "|")
+def _page_count(doc_result):
+    """Return a best-effort page count across Docling result versions."""
+    pages = getattr(doc_result, "pages", None)
+    if pages is not None:
+        return len(pages)
 
-        return "\n".join(markdown_lines)
-    except Exception as e:
-        # Fallback: return raw table representation
-        return f"Table from page {page_num}: {str(table_element)}\n"
+    document = getattr(doc_result, "document", None)
+    document_pages = getattr(document, "pages", None)
+    if document_pages is None:
+        return 1
+    return len(document_pages)
 
 def _generate_job_id(filename):
     """Generate a unique job ID from filename and timestamp."""
@@ -147,8 +146,8 @@ def _generate_job_id(filename):
 @app.get("/health")
 async def health():
     """Health check endpoint."""
-    return {"status": "healthy"}
+    return {"status": "healthy", "port": os.getenv("PORT", "8000")}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8000")))
