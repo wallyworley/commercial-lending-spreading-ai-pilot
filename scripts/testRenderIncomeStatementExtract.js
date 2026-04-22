@@ -11,7 +11,7 @@ const defaultPdfPath = path.join(
   'aster-machine-works-fy2025-audited-financials.pdf'
 );
 
-const endpoint = process.env.EXTRACT_URL || 'https://spread-docling-service.onrender.com/extract';
+const endpoint = normalizeExtractUrl(process.env.EXTRACT_URL || 'https://spread-docling-service.onrender.com/extract');
 const apiKey = process.env.DOCLING_API_KEY || process.env.SPREAD_DOCLING_API_KEY;
 const pdfPath = process.env.INCOME_STATEMENT_PDF || defaultPdfPath;
 
@@ -33,6 +33,11 @@ if (!apiKey) {
   console.error('Missing DOCLING_API_KEY or SPREAD_DOCLING_API_KEY.');
   console.error('Example: DOCLING_API_KEY=... npm run test:extract:income');
   process.exit(2);
+}
+
+function normalizeExtractUrl(value) {
+  const trimmed = value.trim().replace(/\/+$/, '');
+  return trimmed.endsWith('/extract') ? trimmed : `${trimmed}/extract`;
 }
 
 const pdf = await readFile(pdfPath);

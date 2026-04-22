@@ -9,3 +9,11 @@ services:
     envVars:
       - key: DOCLING_API_KEY
         generateValue: true
+      - key: DOCLING_ENABLE_OCR
+        value: "false"
+      - key: DOCLING_TABLE_STRUCTURE
+        value: "false"
+      - key: DOCLING_DOCUMENT_TIMEOUT
+        value: "90"
+      - key: DOCLING_NUM_THREADS
+        value: "1"
