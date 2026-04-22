@@ -6,9 +6,11 @@
   "description": "Evidence pilot for C&I financial spreading AI using Salesforce and nCino-supported controls.",
   "scripts": {
     "generate:synthetic": "node src/generateSyntheticData.js",
+    "parse:synthetic": "node scripts/parseSyntheticIncomeStatement.js",
     "report": "node src/report.js",
     "scorecard": "node src/scorecard.js",
     "test:extract:income": "node scripts/testRenderIncomeStatementExtract.js",
+    "test:extract:parse:income": "node scripts/testRenderIncomeStatementParse.js",
     "test:extract:poor-scan": "node scripts/testRenderPoorScanExtract.js",
     "test": "node --test"
   },
