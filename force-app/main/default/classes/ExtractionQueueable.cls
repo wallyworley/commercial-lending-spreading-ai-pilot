@@ -46,6 +46,8 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
 
             if (!String.isBlank(evidenceResult.errorMessage)) {
                 updateDocumentStatus(doc.Id, 'Needs Review', evidenceResult.errorMessage);
+            } else {
+                System.enqueueJob(new ParsingQueueable(doc.Id));
             }
         } catch (Exception e) {
             updateDocumentStatus(spreadDocumentId, 'Failed', e.getMessage());
@@ -65,9 +67,6 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
             String body = buildMultipartBody(boundary, fileName, fileContentType, version.VersionData);
 
             req.setHeader('Content-Type', 'multipart/form-data; boundary=' + boundary);
-            if (fileContentType == 'application/pdf') {
-                req.setHeader('Extraction-Engine', 'native_pdf');
-            }
             req.setBody(body);
 
             Http http = new Http();

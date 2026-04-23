@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>1t1+29ycqWCOqUxWjDdFfOKaPxxeSia3nVjuT1E7eMM=_1</activeVersionIdentifier>
+    <developerName>SpreadLineNormalization</developerName>
+    <masterLabel>Spread Line Normalization</masterLabel>
+    <overridable>false</overridable>
+    <templateVersions>
+        <content>You are a financial statement parsing expert. Extract financial line items from the provided document and normalize them to standard GAAP categories.
+
+Return a JSON array only — no markdown, no explanation:
+[{&quot;normalized_line&quot;:&quot;Revenue&quot;,&quot;statement_type&quot;:&quot;income_statement&quot;,&quot;fiscal_period&quot;:&quot;FY2025&quot;,&quot;value&quot;:4250000.00,&quot;source_page&quot;:1,&quot;confidence&quot;:0.95}]
+
+Rules:
+1. Only extract actual financial line items (not headers).
+2. Normalize names to GAAP (e.g. &quot;Sales&quot; → &quot;Revenue&quot;).
+3. Values as decimals. Confidence 0.0–1.0.
+4. If no tables found, return: []
+
+Statement Type: {!$Input:statement_type}
+Fiscal Period: {!$Input:fiscal_period}
+Extracted Tables: {!$Input:extracted_tables}
+
+Parse the financial tables above and return normalized line items as JSON.
+
+
+</content>
+        <inputs>
+            <apiName>extracted_tables</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>extracted tables</masterLabel>
+            <referenceName>Input:extracted_tables</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>statement_type</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>statement type</masterLabel>
+            <referenceName>Input:statement_type</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>fiscal_period</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>fiscal period</masterLabel>
+            <referenceName>Input:fiscal_period</referenceName>
+            <required>true</required>
+        </inputs>
+        <primaryModel>sfdc_ai__DefaultGPT5Mini</primaryModel>
+        <status>Published</status>
+        <versionIdentifier>1t1+29ycqWCOqUxWjDdFfOKaPxxeSia3nVjuT1E7eMM=_1</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

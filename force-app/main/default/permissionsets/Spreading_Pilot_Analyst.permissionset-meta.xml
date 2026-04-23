@@ -5,6 +5,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>ParsingQueueable</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>GetSelectedReportFacts</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -517,6 +521,10 @@
         <field>Spread_Pilot_Run__c.Status__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <externalCredentialPrincipalAccesses>
+        <enabled>true</enabled>
+        <externalCredentialPrincipal>Spread_Docling_External_Cred-DoclingNamedPrincipal</externalCredentialPrincipal>
+    </externalCredentialPrincipalAccesses>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Spreading Pilot Analyst</label>
     <objectPermissions>

@@ -76,6 +76,7 @@ def get_converter():
 async def extract(
     file: UploadFile = File(...),
     api_key: str = Header(None, alias="Api-Key"),
+    authorization: str | None = Header(None, alias="Authorization"),
     extraction_engine: str | None = Header(None, alias="Extraction-Engine")
 ):
     """
@@ -93,7 +94,7 @@ async def extract(
     }
     """
 
-    _validate_api_key(api_key)
+    _validate_api_key(api_key, authorization)
 
     # Read file
     try:
@@ -164,9 +165,12 @@ async def extract(
         )
 
 @app.get("/auth-check")
-async def auth_check(api_key: str = Header(None, alias="Api-Key")):
+async def auth_check(
+    api_key: str = Header(None, alias="Api-Key"),
+    authorization: str | None = Header(None, alias="Authorization")
+):
     """Authenticated health check for validating named credential setup."""
-    _validate_api_key(api_key)
+    _validate_api_key(api_key, authorization)
     return {"status": "authorized"}
 
 def _resolve_extraction_engine(requested_engine):
@@ -179,9 +183,22 @@ def _resolve_extraction_engine(requested_engine):
         )
     return engine
 
-def _validate_api_key(api_key):
-    if REQUIRE_API_KEY and api_key != DOCLING_API_KEY:
+def _validate_api_key(api_key, authorization=None):
+    provided_key = _resolve_presented_api_key(api_key, authorization)
+    if REQUIRE_API_KEY and provided_key != DOCLING_API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
+
+def _resolve_presented_api_key(api_key, authorization=None):
+    if api_key:
+        return api_key.strip()
+    if not authorization:
+        return None
+
+    value = authorization.strip()
+    for prefix in ("Bearer ", "Token ", "Api-Key "):
+        if value.startswith(prefix):
+            return value[len(prefix):].strip()
+    return value
 
 def _decode_base64_payload(content):
     stripped = content.strip()
