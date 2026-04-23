@@ -9,6 +9,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>ParseExtractedFinancialEvidence</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>GetSpreadingMaterialErrors</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -29,7 +33,15 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>SpreadDoclingCredentialService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>SpreadDocumentService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>SpreadEvidenceParserService</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -38,6 +50,10 @@
     </classAccesses>
     <classAccesses>
         <apexClass>SpreadEvidenceService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>SpreadLineMappingSelector</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -58,6 +74,14 @@
     </classAccesses>
     <classAccesses>
         <apexClass>SpreadingMaterialErrorsOutput</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>SpreadingParseInput</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>SpreadingParseOutput</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>

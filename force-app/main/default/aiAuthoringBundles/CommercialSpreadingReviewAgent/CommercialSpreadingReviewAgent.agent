@@ -2,7 +2,7 @@
 # Internal Agentforce agent for commercial lending analysts
 # Grounds all responses in Apex-sourced pilot evidence — no outside financial context
 #
-# Actions: RefreshPilotContext, GetSpreadingMaterialErrors, GetSpreadingPilotRunSummary,
+# Actions: ParseExtractedFinancialEvidence, RefreshPilotContext, GetSpreadingMaterialErrors, GetSpreadingPilotRunSummary,
 #          GetSelectedReportFacts, ExplainCreditImpact
 
 config:
@@ -20,15 +20,63 @@ start_agent entry:
     instructions: |
       Greet the analyst and determine what they need help with.
       Route to pilot_run_status for questions about scorecard results, gate decisions, certification counts, or run status.
+      Route to document_parse_review for questions about parsing extracted evidence into draft spread lines.
       Route to report_narrative_prep for questions about generating or grounding a credit memo narrative.
       Route to credit_impact_review for questions about explaining how specific variances affect credit capacity.
     actions:
       go_pilot_status: @utils.transition to @topic.pilot_run_status
         description: "Route to pilot run status and scorecard review"
+      go_document_parse_review: @utils.transition to @topic.document_parse_review
+        description: "Route to parsing extracted financial evidence into draft spread candidates"
       go_report_prep: @utils.transition to @topic.report_narrative_prep
         description: "Route to credit memo narrative preparation"
       go_credit_impact: @utils.transition to @topic.credit_impact_review
         description: "Route to credit impact explanation for specific variances"
+
+topic document_parse_review:
+  description: "Help an analyst parse extracted document evidence into draft spread candidates after extraction has completed. This topic never certifies values and never writes final credit data."
+
+  actions:
+    parse_extracted_financial_evidence:
+      description: "Parses stored extraction evidence for a single Spread_Document__c and creates draft spread line items and path results."
+      inputs:
+        spreadDocumentId: string
+          description: "Salesforce Id of the Spread_Document__c record to parse."
+        pathKey: string
+          description: "Optional comparison path key. Default is salesforce_native_staging."
+      outputs:
+        spreadDocumentId: string
+          description: "Spread document record Id."
+        pathKey: string
+          description: "Comparison path key used for the parse."
+        parserVersion: string
+          description: "Parser implementation version."
+        evidenceBlockCount: object
+          description: "Number of evidence blocks evaluated."
+          complex_data_type_name: "lightning__integerType"
+        lineItemCount: object
+          description: "Number of draft spread line items created."
+          complex_data_type_name: "lightning__integerType"
+        pathResultCount: object
+          description: "Number of draft path results created."
+          complex_data_type_name: "lightning__integerType"
+        exceptionCount: object
+          description: "Number of parser exceptions created."
+          complex_data_type_name: "lightning__integerType"
+        parsingStatus: string
+          description: "Final parsing status for the document."
+        errorMessage: string
+          description: "Error message if parsing could not complete."
+      target: "apex://ParseExtractedFinancialEvidence"
+
+  reasoning:
+    instructions: |
+      Use this topic when the analyst asks you to parse or re-parse extracted financial evidence into draft spread candidates.
+      Require the analyst to provide a specific Spread_Document__c record Id from the workbench. Do not guess record IDs.
+      Call parse_extracted_financial_evidence immediately once a valid document Id is provided.
+      If parsingStatus is Complete, summarize how many draft lines and path results were created and remind the analyst that certification is still required.
+      If parsingStatus is Needs Review or Failed, lead with errorMessage and exceptionCount, and direct the analyst back to the workbench for evidence review.
+      Never certify, approve, or state that draft values are final credit truth.
 
 topic pilot_run_status:
   description: "Answer questions about the current state of a commercial spreading pilot run — scorecard results, gate pass/fail decisions, certification progress, uncertified line counts, and blocking issues."

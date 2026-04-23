@@ -1,6 +1,6 @@
 public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
     private Id spreadDocumentId;
-    private static final String DOCLING_SERVICE = 'Spread_Docling_Service';
+    private static final String DOCLING_SERVICE = 'Spread_Docling_Service_V2';
 
     public ExtractionQueueable(Id spreadDocumentId) {
         this.spreadDocumentId = spreadDocumentId;
@@ -26,7 +26,13 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
             // by SpreadCandidateParserService after evidence is stored.
             DoclingResponse doclingResp = callDoclingService(version);
             if (doclingResp == null || doclingResp.tables == null) {
-                updateDocumentStatus(doc.Id, 'Failed', 'Docling extraction failed');
+                updateDocumentStatus(
+                    doc.Id,
+                    'Failed',
+                    String.isBlank(doclingResp == null ? null : doclingResp.errorMessage)
+                        ? 'Docling extraction failed'
+                        : doclingResp.errorMessage
+                );
                 return;
             }
 
@@ -54,28 +60,35 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
             req.setTimeout(120000);
 
             String fileName = version.Title + '.' + getFileExtension(version.FileType);
+            String fileContentType = getContentType(version.FileType);
             String boundary = '----WebKitFormBoundary' + String.valueOf(System.currentTimeMillis());
-            String body = buildMultipartBody(boundary, fileName, version.VersionData);
+            String body = buildMultipartBody(boundary, fileName, fileContentType, version.VersionData);
 
             req.setHeader('Content-Type', 'multipart/form-data; boundary=' + boundary);
+            if (fileContentType == 'application/pdf') {
+                req.setHeader('Extraction-Engine', 'native_pdf');
+            }
             req.setBody(body);
 
             Http http = new Http();
             HttpResponse res = http.send(req);
 
+            DoclingResponse resp = new DoclingResponse();
             if (res.getStatusCode() == 200) {
                 Map<String, Object> responseMap = (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
-                DoclingResponse resp = new DoclingResponse();
                 resp.tables = (String) responseMap.get('tables');
                 resp.pageCount = (Integer) responseMap.get('page_count');
                 resp.jobId = (String) responseMap.get('job_id');
                 resp.engine = (String) responseMap.get('engine');
-                return resp;
+            } else {
+                resp.errorMessage = 'HTTP ' + res.getStatusCode() + ': ' + abbreviate(res.getBody(), 240);
             }
 
-            return null;
+            return resp;
         } catch (Exception e) {
-            return null;
+            DoclingResponse resp = new DoclingResponse();
+            resp.errorMessage = e.getMessage();
+            return resp;
         }
     }
 
@@ -112,15 +125,23 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
         return versions.isEmpty() ? null : versions[0];
     }
 
-    private String buildMultipartBody(String boundary, String fileName, Blob fileData) {
+    private String buildMultipartBody(String boundary, String fileName, String fileContentType, Blob fileData) {
         String body = '';
         body += '--' + boundary + '\r\n';
         body += 'Content-Disposition: form-data; name="file"; filename="' + fileName + '"\r\n';
-        body += 'Content-Type: application/octet-stream\r\n\r\n';
-        // Note: In production, blob handling would require proper binary encoding
+        body += 'Content-Type: ' + fileContentType + '\r\n\r\n';
         body += EncodingUtil.base64Encode(fileData) + '\r\n';
         body += '--' + boundary + '--';
         return body;
+    }
+
+    private String getContentType(String fileType) {
+        if (String.isBlank(fileType)) return 'application/pdf';
+        String normalized = fileType.toUpperCase();
+        if (normalized == 'PDF') return 'application/pdf';
+        if (normalized == 'JPEG' || normalized == 'JPG') return 'image/jpeg';
+        if (normalized == 'PNG') return 'image/png';
+        return 'application/octet-stream';
     }
 
     private String getFileExtension(String fileType) {
@@ -129,10 +150,18 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
         return fileType.toLowerCase();
     }
 
+    private String abbreviate(String value, Integer maxLength) {
+        if (String.isBlank(value) || maxLength == null || maxLength <= 0 || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength) + '...';
+    }
+
     private class DoclingResponse {
         public String tables;
         public Integer pageCount;
         public String jobId;
         public String engine;
+        public String errorMessage;
     }
 }

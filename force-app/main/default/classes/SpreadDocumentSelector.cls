@@ -5,7 +5,8 @@ public inherited sharing virtual class SpreadDocumentSelector {
             SELECT Id, Name, Pilot_Run__c, Borrower__c, Loan_Or_Opportunity__c,
                    Document_Type__c, Statement_Type__c, Fiscal_Period__c, Scenario_Type__c,
                    Source_System__c, ContentDocumentId__c,
-                   Extraction_Status__c, Extracted_At__c, Page_Count__c, Contains_Confidential_Data__c
+                   Extraction_Status__c, Extracted_At__c, Page_Count__c, Contains_Confidential_Data__c,
+                   Parsing_Status__c, Parsed_At__c, Document_Store__c
             FROM Spread_Document__c
             WHERE Pilot_Run__c = :pilotRunId
             WITH USER_MODE
@@ -15,7 +16,7 @@ public inherited sharing virtual class SpreadDocumentSelector {
 
     public virtual List<ContentVersion> getVersionsByDocumentIds(Set<Id> contentDocumentIds) {
         return [
-            SELECT Id, Title, FileType, ContentSize, VersionData, ContentDocumentId
+            SELECT Id, Title, FileType, ContentSize, ContentDocumentId
             FROM ContentVersion
             WHERE ContentDocumentId IN :contentDocumentIds
             AND IsLatest = true
@@ -28,7 +29,8 @@ public inherited sharing virtual class SpreadDocumentSelector {
             SELECT Id, Name, Pilot_Run__c, Borrower__c, Loan_Or_Opportunity__c,
                    Document_Type__c, Statement_Type__c, Fiscal_Period__c, Scenario_Type__c,
                    Source_System__c, ContentDocumentId__c,
-                   Extraction_Status__c, Extracted_At__c, Page_Count__c
+                   Extraction_Status__c, Extracted_At__c, Page_Count__c,
+                   Parsing_Status__c, Parsed_At__c, Document_Store__c
             FROM Spread_Document__c
             WHERE Id = :documentId
             WITH USER_MODE

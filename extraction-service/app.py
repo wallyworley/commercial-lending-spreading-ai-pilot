@@ -2,6 +2,7 @@ import os
 import tempfile
 import logging
 import time
+import base64
 from io import BytesIO
 from pathlib import Path
 from fastapi import FastAPI, File, UploadFile, Header, HTTPException
@@ -12,6 +13,7 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("spread-docling")
 
 DOCLING_API_KEY = os.getenv("DOCLING_API_KEY", "dev-key-change-in-production")
+REQUIRE_API_KEY = os.getenv("REQUIRE_API_KEY", "true").lower() == "true"
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 ALLOWED_TYPES = {"application/pdf", "image/jpeg", "image/png"}
 DOCLING_ENABLE_OCR = os.getenv("DOCLING_ENABLE_OCR", "false").lower() == "true"
@@ -91,22 +93,23 @@ async def extract(
     }
     """
 
-    # Validate API key
-    if api_key != DOCLING_API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-
-    # Validate content type
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {file.content_type}. Supported: PDF, JPEG, PNG"
-        )
+    _validate_api_key(api_key)
 
     # Read file
     try:
-        content = await file.read()
+        raw_content = await file.read()
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
+
+    content = _decode_base64_payload(raw_content)
+    content_type = _detect_content_type(file.content_type, file.filename, content)
+
+    # Validate content type
+    if content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {content_type}. Supported: PDF, JPEG, PNG"
+        )
 
     # Validate file size
     if len(content) > MAX_FILE_SIZE:
@@ -120,12 +123,12 @@ async def extract(
         logger.info(
             "Starting extraction: filename=%s content_type=%s bytes=%s",
             file.filename,
-            file.content_type,
+            content_type,
             len(content),
         )
         started = time.time()
         requested_engine = _resolve_extraction_engine(extraction_engine)
-        extraction_result = _extract_content(content, file.content_type, requested_engine)
+        extraction_result = _extract_content(content, content_type, requested_engine)
 
         markdown_tables = extraction_result["markdown"]
         page_count = extraction_result["page_count"]
@@ -160,6 +163,12 @@ async def extract(
             detail=f"Extraction failed: {str(e)}"
         )
 
+@app.get("/auth-check")
+async def auth_check(api_key: str = Header(None, alias="Api-Key")):
+    """Authenticated health check for validating named credential setup."""
+    _validate_api_key(api_key)
+    return {"status": "authorized"}
+
 def _resolve_extraction_engine(requested_engine):
     """Resolve and validate the extraction engine for this request."""
     engine = (requested_engine or EXTRACTION_ENGINE).strip().lower()
@@ -169,6 +178,47 @@ def _resolve_extraction_engine(requested_engine):
             detail="Extraction-Engine must be one of: auto, native_pdf, docling"
         )
     return engine
+
+def _validate_api_key(api_key):
+    if REQUIRE_API_KEY and api_key != DOCLING_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+def _decode_base64_payload(content):
+    stripped = content.strip()
+    if not stripped or len(stripped) % 4 != 0:
+        return content
+
+    try:
+        decoded = base64.b64decode(stripped, validate=True)
+    except Exception:
+        return content
+
+    if decoded.startswith(b"%PDF") or decoded.startswith(b"\xff\xd8\xff") or decoded.startswith(b"\x89PNG\r\n\x1a\n"):
+        logger.info("Detected base64-encoded upload payload; decoded before extraction")
+        return decoded
+    return content
+
+def _detect_content_type(content_type, filename, content):
+    normalized = (content_type or "").lower()
+    if normalized in ALLOWED_TYPES:
+        return normalized
+
+    suffix = Path(filename or "").suffix.lower()
+    if suffix == ".pdf":
+        return "application/pdf"
+    if suffix in {".jpg", ".jpeg"}:
+        return "image/jpeg"
+    if suffix == ".png":
+        return "image/png"
+
+    if content.startswith(b"%PDF"):
+        return "application/pdf"
+    if content.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if content.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+
+    return normalized or "application/octet-stream"
 
 def _extract_content(content, content_type, extraction_engine):
     """
@@ -284,6 +334,7 @@ async def health():
     return {
         "status": "healthy",
         "port": os.getenv("PORT", "8000"),
+        "require_api_key": REQUIRE_API_KEY,
         "docling_enable_ocr": DOCLING_ENABLE_OCR,
         "docling_table_structure": DOCLING_TABLE_STRUCTURE,
         "docling_document_timeout": DOCLING_DOCUMENT_TIMEOUT,

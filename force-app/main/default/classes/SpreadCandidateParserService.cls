@@ -26,6 +26,7 @@ public with sharing class SpreadCandidateParserService {
         public String raw_label;
         public String raw_value;
         public Decimal normalized_value;
+        public Boolean material;
         public String evidence_id;
         public Integer source_page;
         public String source_coordinates;
@@ -103,7 +104,7 @@ public with sharing class SpreadCandidateParserService {
                 Source_Page__c = candidate.source_page,
                 Source_Coordinates__c = candidate.source_coordinates,
                 Primary_Evidence__c = evidenceId,
-                Material__c = true,
+                Material__c = candidate.material == null ? true : candidate.material,
                 Include_In_Report__c = false,
                 Review_Note__c = 'Draft parser candidate. Requires analyst certification.'
             ));
@@ -120,9 +121,11 @@ public with sharing class SpreadCandidateParserService {
         insert lineItems;
 
         List<Spread_Path_Result__c> pathResults = new List<Spread_Path_Result__c>();
+        Boolean hasOpenCandidateExceptions = false;
         for (Integer index = 0; index < lineItems.size(); index++) {
             ParserCandidate candidate = acceptedCandidates[index];
             Boolean exceptionFlag = candidate.status == 'exception' || !String.isBlank(candidate.exception_reason);
+            hasOpenCandidateExceptions = hasOpenCandidateExceptions || exceptionFlag;
             pathResults.add(new Spread_Path_Result__c(
                 Pilot_Run__c = document.Pilot_Run__c,
                 Spread_Document__c = document.Id,
@@ -147,7 +150,7 @@ public with sharing class SpreadCandidateParserService {
         result.lineItemCount = lineItems.size();
         result.pathResultCount = pathResults.size();
         result.exceptionCount = createdExceptions;
-        result.parsingStatus = createdExceptions > 0 ? 'Needs Review' : 'Complete';
+        result.parsingStatus = (createdExceptions > 0 || hasOpenCandidateExceptions) ? 'Needs Review' : 'Complete';
         markParsingStatus(document.Id, result.parsingStatus);
         return result;
     }

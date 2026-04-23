@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiFunction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Parses stored extraction evidence for a single Spread_Document__c into draft line items and path results. Use only after extraction is complete. This action does not certify values or make credit decisions.</description>
+    <masterLabel>Parse Extracted Financial Evidence</masterLabel>
+    <invocationTarget>ParseExtractedFinancialEvidence</invocationTarget>
+    <invocationTargetType>apex</invocationTargetType>
+</GenAiFunction>

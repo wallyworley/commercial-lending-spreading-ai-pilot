@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <label>Cash</label>
+    <protected>false</protected>
+    <values><field>Accepted_Label__c</field><value xsi:type="xsd:string">Cash</value></values>
+    <values><field>Active__c</field><value xsi:type="xsd:boolean">true</value></values>
+    <values><field>Material_Default__c</field><value xsi:type="xsd:boolean">true</value></values>
+    <values><field>Normalized_Line__c</field><value xsi:type="xsd:string">cash</value></values>
+    <values><field>Priority__c</field><value xsi:type="xsd:double">80</value></values>
+    <values><field>Requires_Reviewer__c</field><value xsi:type="xsd:boolean">false</value></values>
+    <values><field>Statement_Type__c</field><value xsi:type="xsd:string">balance_sheet</value></values>
+</CustomMetadata>

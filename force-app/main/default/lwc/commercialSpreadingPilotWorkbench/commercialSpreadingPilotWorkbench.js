@@ -8,6 +8,8 @@ import certifyPathResults from '@salesforce/apex/SpreadCertificationService.cert
 import rejectPathResults from '@salesforce/apex/SpreadCertificationService.rejectPathResults';
 import onUpload from '@salesforce/apex/SpreadDocumentService.onUpload';
 import getDocuments from '@salesforce/apex/SpreadDocumentService.getDocuments';
+import parseDocument from '@salesforce/apex/SpreadDocumentService.parseDocument';
+import parseReadyDocuments from '@salesforce/apex/SpreadDocumentService.parseReadyDocuments';
 import retryExtraction from '@salesforce/apex/SpreadDocumentService.retryExtraction';
 
 const SCORECARD_COLUMNS = [
@@ -53,7 +55,8 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
     message;
     errorMessage;
 
-    activeTab = 'overview';
+    activeTab = 'corpus';
+    selectedReviewDocumentId = '';
 
     @track reviewRows = [];
     pathColumns = [];
@@ -71,6 +74,7 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
     _pendingIds = [];
 
     @track documents = [];
+    reviewDocumentOptions = [{ label: 'All Documents', value: '' }];
     isUploadingDocs = false;
     _pollingInterval = null;
 
@@ -227,14 +231,6 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         }
     }
 
-    async handleTabSelect(event) {
-        const tab = event.detail.value;
-        this.activeTab = tab;
-        if (tab === 'review' && this.selectedRunId && this.reviewRows.length === 0) {
-            await this.loadReviewPage();
-        }
-    }
-
     async handleMaterialToggle(event) {
         this.materialOnly = event.target.checked;
         this.reviewOffset = 0;
@@ -354,6 +350,8 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         if (!this.selectedRunId) {
             this.scorecards = [];
             this.materialErrors = [];
+            this.documents = [];
+            this.reviewDocumentOptions = [{ label: 'All Documents', value: '' }];
             return;
         }
 
@@ -362,7 +360,8 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         try {
             const [summaries, errors] = await Promise.all([
                 getRunSummary({ pilotRunId: this.selectedRunId }),
-                getMaterialErrors({ pilotRunId: this.selectedRunId })
+                getMaterialErrors({ pilotRunId: this.selectedRunId }),
+                this.loadDocuments()
             ]);
             this.scorecards = this.formatScorecards(summaries);
             this.materialErrors = this.formatMaterialErrors(errors);
@@ -383,7 +382,8 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
                 pilotRunId: this.selectedRunId,
                 pageSize: PAGE_SIZE,
                 pageOffset: this.reviewOffset,
-                materialOnly: this.materialOnly
+                materialOnly: this.materialOnly,
+                spreadDocumentId: this.selectedReviewDocumentId || null
             });
             this.reviewTotalCount = result.totalCount;
             this.pathColumns = result.pathKeys.map((k) => PATH_LABELS[k] || k);
@@ -422,6 +422,8 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
 
             return {
                 lineItemId: line.lineItemId,
+                documentName: line.documentName || 'Unassigned',
+                spreadDocumentId: line.spreadDocumentId,
                 normalizedLine: line.normalizedLine || 'Unmapped',
                 fiscalPeriod: line.fiscalPeriod || '—',
                 material: line.material,
@@ -446,13 +448,16 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         return { ids, lines };
     }
 
-    resetReviewState() {
+    resetReviewState(resetDocumentFilter = true) {
         this.reviewRows = [];
         this.pathColumns = [];
         this.reviewTotalCount = 0;
         this.reviewOffset = 0;
         this.selectedLineIds = {};
         this.materialOnly = false;
+        if (resetDocumentFilter) {
+            this.selectedReviewDocumentId = '';
+        }
     }
 
     setSelectedRun() {
@@ -522,6 +527,18 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         return this.documents.length > 0;
     }
 
+    get readyDocumentCount() {
+        return this.documents.filter((doc) => doc.canParse).length;
+    }
+
+    get hasReadyDocuments() {
+        return this.readyDocumentCount > 0;
+    }
+
+    get isParseReadyDisabled() {
+        return this.isUploadingDocs || !this.hasReadyDocuments;
+    }
+
     async handleTabSelect(event) {
         const tab = event.detail.value;
         this.activeTab = tab;
@@ -542,7 +559,14 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         this.isUploadingDocs = true;
         this.clearMessages();
         try {
-            const contentDocumentIds = uploadedFiles.map((f) => f.contentDocumentId);
+            const contentDocumentIds = uploadedFiles
+                .map((f) => f.documentId || f.contentDocumentId)
+                .filter((id) => !!id);
+
+            if (contentDocumentIds.length === 0) {
+                throw new Error('Upload completed, but Salesforce did not return any document IDs.');
+            }
+
             await onUpload({ pilotRunId: this.selectedRunId, contentDocumentIds });
             this.message = `Uploaded ${uploadedFiles.length} document(s). Processing...`;
             await this.loadDocuments();
@@ -557,15 +581,21 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
     async loadDocuments() {
         if (!this.selectedRunId) {
             this.documents = [];
+            this.reviewDocumentOptions = [{ label: 'All Documents', value: '' }];
             return;
         }
 
         try {
             const docs = await getDocuments({ pilotRunId: this.selectedRunId });
-            this.documents = docs || [];
+            this.documents = (docs || []).map((doc) => this.decorateDocument(doc));
+            this.reviewDocumentOptions = [
+                { label: 'All Documents', value: '' },
+                ...this.documents.map((doc) => ({ label: doc.name, value: doc.id }))
+            ];
         } catch (error) {
             this.handleError(error, 'Unable to load documents.');
             this.documents = [];
+            this.reviewDocumentOptions = [{ label: 'All Documents', value: '' }];
         }
     }
 
@@ -585,6 +615,77 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         }
     }
 
+    async handleParseReadyDocuments() {
+        if (!this.selectedRunId) {
+            return;
+        }
+
+        this.isUploadingDocs = true;
+        this.clearMessages();
+        try {
+            const result = await parseReadyDocuments({
+                pilotRunId: this.selectedRunId,
+                pathKey: 'salesforce_native_staging'
+            });
+            const parts = [
+                `Parsed ${result?.parsedCount || 0}`,
+                `skipped ${result?.skippedCount || 0}`,
+                `failed ${result?.failedCount || 0}`
+            ];
+            if (result?.messages?.length) {
+                this.errorMessage = result.messages.join(' | ');
+                this.message = undefined;
+            } else {
+                this.message = parts.join(', ') + '.';
+            }
+
+            await Promise.all([
+                this.loadDocuments(),
+                this.loadSelectedRunData()
+            ]);
+            const firstParsedOrReadyDocument = this.documents.find((doc) => doc.parsingStatus === 'Complete') ||
+                this.documents.find((doc) => doc.canParse);
+            this.selectedReviewDocumentId = firstParsedOrReadyDocument ? firstParsedOrReadyDocument.id : '';
+            this.activeTab = 'review';
+            this.resetReviewState(false);
+            await this.loadReviewPage();
+        } catch (error) {
+            this.handleError(error, 'Bulk parse failed.');
+        } finally {
+            this.isUploadingDocs = false;
+        }
+    }
+
+    async handleParseDocument(event) {
+        const docId = event.currentTarget.dataset.docId;
+        this.isUploadingDocs = true;
+        this.clearMessages();
+        try {
+            const result = await parseDocument({
+                spreadDocumentId: docId,
+                pathKey: 'salesforce_native_staging'
+            });
+            if (result?.errorMessage) {
+                this.errorMessage = result.errorMessage;
+                this.message = undefined;
+            } else {
+                this.message = `Parsed ${result?.lineItemCount || 0} draft line(s) into ${result?.pathResultCount || 0} path result(s).`;
+                this.selectedReviewDocumentId = docId;
+                this.activeTab = 'review';
+            }
+            await Promise.all([
+                this.loadDocuments(),
+                this.loadSelectedRunData()
+            ]);
+            this.resetReviewState(false);
+            await this.loadReviewPage();
+        } catch (error) {
+            this.handleError(error, 'Parse failed.');
+        } finally {
+            this.isUploadingDocs = false;
+        }
+    }
+
     startPolling() {
         if (this._pollingInterval) {
             this.stopPolling();
@@ -592,9 +693,7 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         this._pollingInterval = setInterval(async () => {
             await this.loadDocuments();
             const allTerminal = this.documents.every((doc) =>
-                doc.extractionStatus === 'Complete' ||
-                doc.extractionStatus === 'Failed' ||
-                doc.extractionStatus === 'Needs Review'
+                this.isTerminalStatus(doc.extractionStatus)
             );
             if (allTerminal) {
                 this.stopPolling();
@@ -609,7 +708,7 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         }
     }
 
-    getStatusClass(status) {
+    statusClass(status) {
         if (!status) return 'slds-badge';
         if (status === 'Complete') return 'slds-badge slds-badge_success';
         if (status === 'Failed') return 'slds-badge slds-badge_error';
@@ -618,7 +717,57 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         return 'slds-badge';
     }
 
-    isFailedStatus(status) {
-        return status === 'Failed';
+    isTerminalStatus(status) {
+        return status === 'Complete' || status === 'Failed' || status === 'Needs Review';
+    }
+
+    decorateDocument(doc) {
+        const extractionStatus = doc.extractionStatus || 'Not Started';
+        const parsingStatus = doc.parsingStatus || 'Not Started';
+        const evidenceCount = doc.evidenceCount || 0;
+        const canRetryExtraction = extractionStatus === 'Failed';
+        const canParse =
+            extractionStatus === 'Complete' &&
+            evidenceCount > 0 &&
+            parsingStatus !== 'Complete' &&
+            parsingStatus !== 'In Progress';
+        let parseAvailabilityReason = 'Ready to parse';
+
+        if (!canParse) {
+            if (extractionStatus === 'Failed') {
+                parseAvailabilityReason = 'Extraction failed. Retry extraction.';
+            } else if (extractionStatus === 'Needs Review') {
+                parseAvailabilityReason = 'Extraction needs review before parse.';
+            } else if (extractionStatus !== 'Complete') {
+                parseAvailabilityReason = 'Waiting for extraction to finish';
+            } else if (evidenceCount === 0) {
+                parseAvailabilityReason = 'No extraction evidence found';
+            } else if (parsingStatus === 'Complete') {
+                parseAvailabilityReason = 'Already parsed';
+            } else if (parsingStatus === 'In Progress') {
+                parseAvailabilityReason = 'Parsing in progress';
+            } else {
+                parseAvailabilityReason = 'Review document status';
+            }
+        }
+
+        return {
+            ...doc,
+            extractionStatus,
+            parsingStatus,
+            evidenceCount,
+            extractionStatusClass: this.statusClass(extractionStatus),
+            parsingStatusClass: this.statusClass(parsingStatus),
+            canRetryExtraction,
+            canParse,
+            parseAvailabilityReason
+        };
+    }
+
+    async handleReviewDocumentChange(event) {
+        this.selectedReviewDocumentId = event.detail.value;
+        this.reviewOffset = 0;
+        this.selectedLineIds = {};
+        await this.loadReviewPage();
     }
 }

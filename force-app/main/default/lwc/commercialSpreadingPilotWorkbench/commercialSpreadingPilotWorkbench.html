@@ -51,7 +51,7 @@
                     <p>{selectedRunSummary}</p>
                 </section>
 
-                <lightning-tabset onselect={handleTabSelect}>
+                <lightning-tabset active-tab-value={activeTab} onselect={handleTabSelect}>
                     <lightning-tab label="Document Corpus" value="corpus">
                         <div class="slds-p-top_small">
                             <template lwc:if={selectedRunId}>
@@ -59,6 +59,17 @@
                                     <div class="section-heading">
                                         <h2 class="slds-text-heading_medium">Upload Financial Documents</h2>
                                         <p>Upload PDFs, JPEGs, or PNGs. Documents are automatically extracted and processed.</p>
+                                    </div>
+                                    <div class="slds-m-bottom_medium">
+                                        <lightning-button
+                                            label="Parse Ready Documents"
+                                            variant="brand-outline"
+                                            onclick={handleParseReadyDocuments}
+                                            disabled={isParseReadyDisabled}
+                                        ></lightning-button>
+                                        <span class="slds-m-left_small slds-text-body_small">
+                                            {readyDocumentCount} ready to parse
+                                        </span>
                                     </div>
                                     <div class="slds-m-bottom_medium">
                                         <lightning-file-upload
@@ -90,7 +101,9 @@
                                                         <th scope="col">Statement</th>
                                                         <th scope="col">Period</th>
                                                         <th scope="col">Store</th>
-                                                        <th scope="col">Status</th>
+                                                        <th scope="col">Extract</th>
+                                                        <th scope="col">Parse</th>
+                                                        <th scope="col">Evidence</th>
                                                         <th scope="col">Extracted</th>
                                                         <th scope="col">Pages</th>
                                                         <th scope="col">Actions</th>
@@ -105,12 +118,16 @@
                                                             <td>{doc.fiscalPeriod}</td>
                                                             <td>{doc.documentStore}</td>
                                                             <td>
-                                                                <span class={getStatusClass(doc.extractionStatus)}>{doc.extractionStatus}</span>
+                                                                <span class={doc.extractionStatusClass}>{doc.extractionStatus}</span>
                                                             </td>
+                                                            <td>
+                                                                <span class={doc.parsingStatusClass}>{doc.parsingStatus}</span>
+                                                            </td>
+                                                            <td>{doc.evidenceCount}</td>
                                                             <td>{doc.extractedAt}</td>
                                                             <td>{doc.pageCount}</td>
                                                             <td>
-                                                                <template lwc:if={isFailedStatus(doc.extractionStatus)}>
+                                                                <template lwc:if={doc.canRetryExtraction}>
                                                                     <lightning-button
                                                                         label="Retry"
                                                                         size="small"
@@ -119,6 +136,20 @@
                                                                         disabled={isUploadingDocs}
                                                                     ></lightning-button>
                                                                 </template>
+                                                                <template lwc:if={doc.canParse}>
+                                                                    <lightning-button
+                                                                        class="slds-m-left_x-small"
+                                                                        label="Parse"
+                                                                        size="small"
+                                                                        variant="brand"
+                                                                        data-doc-id={doc.id}
+                                                                        onclick={handleParseDocument}
+                                                                        disabled={isUploadingDocs}
+                                                                    ></lightning-button>
+                                                                </template>
+                                                                <div class="slds-text-body_small slds-m-top_x-small">
+                                                                    {doc.parseAvailabilityReason}
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     </template>
@@ -189,7 +220,17 @@
                                         disabled={isLoadingReview}
                                     ></lightning-input>
                                 </div>
-                                <div class="slds-col slds-size_1-of-1 slds-large-size_6-of-12 actions">
+                                <div class="slds-col slds-size_1-of-1 slds-large-size_3-of-12">
+                                    <lightning-combobox
+                                        name="reviewDocument"
+                                        label="Document Filter"
+                                        value={selectedReviewDocumentId}
+                                        options={reviewDocumentOptions}
+                                        onchange={handleReviewDocumentChange}
+                                        disabled={isLoadingReview}
+                                    ></lightning-combobox>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-large-size_3-of-12 actions">
                                     <span class="slds-text-body_small slds-m-right_small">{reviewCountLabel}</span>
                                 </div>
                             </div>
@@ -230,6 +271,7 @@
                                                         onchange={handleSelectAll}
                                                     ></lightning-input>
                                                 </th>
+                                                <th class="col-line" scope="col">Document</th>
                                                 <th class="col-line" scope="col">Spread Line</th>
                                                 <th class="col-period" scope="col">Period</th>
                                                 <th class="col-material" scope="col">Material</th>
@@ -252,6 +294,7 @@
                                                             onchange={handleRowSelect}
                                                         ></lightning-input>
                                                     </td>
+                                                    <td class="col-line">{row.documentName}</td>
                                                     <td class="col-line">{row.normalizedLine}</td>
                                                     <td class="col-period">{row.fiscalPeriod}</td>
                                                     <td class="col-material">

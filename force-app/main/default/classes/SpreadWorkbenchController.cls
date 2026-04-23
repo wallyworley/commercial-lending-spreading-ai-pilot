@@ -10,6 +10,8 @@ public with sharing class SpreadWorkbenchController {
 
     public class SpreadLineRow {
         @AuraEnabled public Id lineItemId;
+        @AuraEnabled public Id spreadDocumentId;
+        @AuraEnabled public String documentName;
         @AuraEnabled public String normalizedLine;
         @AuraEnabled public String statementType;
         @AuraEnabled public String fiscalPeriod;
@@ -125,7 +127,7 @@ public with sharing class SpreadWorkbenchController {
 
     @AuraEnabled(cacheable=false)
     public static SpreadReviewPage getSpreadReviewPage(
-        Id pilotRunId, Integer pageSize, Integer pageOffset, Boolean materialOnly
+        Id pilotRunId, Integer pageSize, Integer pageOffset, Boolean materialOnly, Id spreadDocumentId
     ) {
         if (pilotRunId == null) {
             SpreadReviewPage empty = new SpreadReviewPage();
@@ -141,10 +143,27 @@ public with sharing class SpreadWorkbenchController {
 
         List<Spread_Line_Item__c> lines;
         Integer totalCount;
+        Boolean filterDocument = spreadDocumentId != null;
 
-        if (filterMaterial) {
+        if (filterMaterial && filterDocument) {
             lines = [
-                SELECT Id, Normalized_Line__c, Statement_Type__c, Fiscal_Period__c, Material__c, Include_In_Report__c
+                SELECT Id, Spread_Document__c, Spread_Document__r.Name, Normalized_Line__c, Statement_Type__c,
+                       Fiscal_Period__c, Material__c, Include_In_Report__c
+                FROM Spread_Line_Item__c
+                WHERE Pilot_Run__c = :pilotRunId AND Material__c = true AND Spread_Document__c = :spreadDocumentId
+                WITH USER_MODE
+                ORDER BY Statement_Type__c NULLS LAST, Normalized_Line__c NULLS LAST
+                LIMIT :safeSize OFFSET :safeOffset
+            ];
+            totalCount = [
+                SELECT COUNT() FROM Spread_Line_Item__c
+                WHERE Pilot_Run__c = :pilotRunId AND Material__c = true AND Spread_Document__c = :spreadDocumentId
+                WITH USER_MODE
+            ];
+        } else if (filterMaterial) {
+            lines = [
+                SELECT Id, Spread_Document__c, Spread_Document__r.Name, Normalized_Line__c, Statement_Type__c,
+                       Fiscal_Period__c, Material__c, Include_In_Report__c
                 FROM Spread_Line_Item__c
                 WHERE Pilot_Run__c = :pilotRunId AND Material__c = true
                 WITH USER_MODE
@@ -156,9 +175,25 @@ public with sharing class SpreadWorkbenchController {
                 WHERE Pilot_Run__c = :pilotRunId AND Material__c = true
                 WITH USER_MODE
             ];
+        } else if (filterDocument) {
+            lines = [
+                SELECT Id, Spread_Document__c, Spread_Document__r.Name, Normalized_Line__c, Statement_Type__c,
+                       Fiscal_Period__c, Material__c, Include_In_Report__c
+                FROM Spread_Line_Item__c
+                WHERE Pilot_Run__c = :pilotRunId AND Spread_Document__c = :spreadDocumentId
+                WITH USER_MODE
+                ORDER BY Statement_Type__c NULLS LAST, Normalized_Line__c NULLS LAST
+                LIMIT :safeSize OFFSET :safeOffset
+            ];
+            totalCount = [
+                SELECT COUNT() FROM Spread_Line_Item__c
+                WHERE Pilot_Run__c = :pilotRunId AND Spread_Document__c = :spreadDocumentId
+                WITH USER_MODE
+            ];
         } else {
             lines = [
-                SELECT Id, Normalized_Line__c, Statement_Type__c, Fiscal_Period__c, Material__c, Include_In_Report__c
+                SELECT Id, Spread_Document__c, Spread_Document__r.Name, Normalized_Line__c, Statement_Type__c,
+                       Fiscal_Period__c, Material__c, Include_In_Report__c
                 FROM Spread_Line_Item__c
                 WHERE Pilot_Run__c = :pilotRunId
                 WITH USER_MODE
@@ -209,6 +244,8 @@ public with sharing class SpreadWorkbenchController {
         for (Spread_Line_Item__c line : lines) {
             SpreadLineRow row = new SpreadLineRow();
             row.lineItemId = line.Id;
+            row.spreadDocumentId = line.Spread_Document__c;
+            row.documentName = line.Spread_Document__r == null ? null : line.Spread_Document__r.Name;
             row.normalizedLine = line.Normalized_Line__c;
             row.statementType = line.Statement_Type__c;
             row.fiscalPeriod = line.Fiscal_Period__c;
