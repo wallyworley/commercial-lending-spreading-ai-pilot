@@ -1,5 +1,5 @@
 // Pure domain logic — no SOQL, no DML. Testable with direct SObject or scalar input.
-public without sharing class SpreadScorecardRules {
+public inherited sharing class SpreadScorecardRules {
     public static final Decimal EXACT_MATCH_GATE = 0.98;
     public static final Decimal DOLLAR_ACCURACY_GATE = 0.995;
     public static final Decimal TIME_REDUCTION_GATE = 0.30;

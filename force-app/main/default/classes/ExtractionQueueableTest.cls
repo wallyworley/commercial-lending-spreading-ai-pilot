@@ -2,6 +2,10 @@
 private class ExtractionQueueableTest {
     private static Integer flakyDoclingCallCount = 0;
 
+    private static void disableAutomaticParsing() {
+        ExtractionQueueable.disableParsingEnqueue = true;
+    }
+
     @TestSetup
     static void setup() {
         SpreadTestDataFactory.createPilotRun();
@@ -9,6 +13,7 @@ private class ExtractionQueueableTest {
 
     @IsTest
     static void testExecuteSuccessfulExtraction() {
+        disableAutomaticParsing();
         Spread_Pilot_Run__c run = [SELECT Id FROM Spread_Pilot_Run__c LIMIT 1];
         Spread_Document__c doc = SpreadTestDataFactory.createDocument(run.Id);
 
@@ -57,6 +62,7 @@ private class ExtractionQueueableTest {
 
     @IsTest
     static void testExecuteWithNullDocument() {
+        disableAutomaticParsing();
         // Pass an ID that won't exist in the database
         Id fakeDocId = Spread_Document__c.SObjectType.getDescribe().getKeyPrefix() + '000000000000';
 
@@ -64,12 +70,24 @@ private class ExtractionQueueableTest {
         System.enqueueJob(new ExtractionQueueable(fakeDocId));
         Test.stopTest();
 
-        // Should not throw exception, just return early
-        Assert.isTrue(true, 'Execution should complete without error');
+        Integer evidenceCount = [
+            SELECT COUNT()
+            FROM Spread_Extraction_Evidence__c
+            WHERE Spread_Document__c = :fakeDocId
+        ];
+        Integer exceptionCount = [
+            SELECT COUNT()
+            FROM Spread_Exception__c
+            WHERE Spread_Document__c = :fakeDocId
+        ];
+
+        Assert.areEqual(0, evidenceCount, 'Missing documents should not create evidence.');
+        Assert.areEqual(0, exceptionCount, 'Missing documents should not create exceptions.');
     }
 
     @IsTest
     static void testExecuteWithMissingContentVersion() {
+        disableAutomaticParsing();
         Spread_Pilot_Run__c run = [SELECT Id FROM Spread_Pilot_Run__c LIMIT 1];
         Spread_Document__c doc = SpreadTestDataFactory.createDocument(run.Id);
         doc.ContentDocumentId__c = '0691y00000DT8GAAX'; // Invalid ID
@@ -85,6 +103,7 @@ private class ExtractionQueueableTest {
 
     @IsTest
     static void testExecuteWithDoclingHttpError() {
+        disableAutomaticParsing();
         Spread_Pilot_Run__c run = [SELECT Id FROM Spread_Pilot_Run__c LIMIT 1];
         Spread_Document__c doc = SpreadTestDataFactory.createDocument(run.Id);
 
@@ -120,6 +139,7 @@ private class ExtractionQueueableTest {
 
     @IsTest
     static void testExecuteRetriesTransientDoclingLoadingErrorUntilFinalFailure() {
+        disableAutomaticParsing();
         Spread_Document__c doc = createDocumentWithContentVersion();
         flakyDoclingCallCount = 0;
         Test.setMock(HttpCalloutMock.class, new FlakyDoclingMockResponse());
@@ -149,6 +169,7 @@ private class ExtractionQueueableTest {
 
     @IsTest
     static void testExecuteFailsTransientErrorAfterMaxAttempts() {
+        disableAutomaticParsing();
         Spread_Document__c doc = createDocumentWithContentVersion();
         Test.setMock(HttpCalloutMock.class, new DoclingLoadingMockResponse());
 
@@ -174,6 +195,7 @@ private class ExtractionQueueableTest {
 
     @IsTest
     static void testExecuteCreatesEvidenceOnly() {
+        disableAutomaticParsing();
         Spread_Pilot_Run__c run = [SELECT Id FROM Spread_Pilot_Run__c LIMIT 1];
         Spread_Document__c doc = SpreadTestDataFactory.createDocument(run.Id);
         doc.Statement_Type__c = 'income_statement';
@@ -214,6 +236,7 @@ private class ExtractionQueueableTest {
 
     @IsTest
     static void testExecuteWithInvalidJsonResponse() {
+        disableAutomaticParsing();
         Spread_Pilot_Run__c run = [SELECT Id FROM Spread_Pilot_Run__c LIMIT 1];
         Spread_Document__c doc = SpreadTestDataFactory.createDocument(run.Id);
 
@@ -241,6 +264,7 @@ private class ExtractionQueueableTest {
 
     @IsTest
     static void testExecuteWithBlankTablesResponse() {
+        disableAutomaticParsing();
         Spread_Document__c doc = createDocumentWithContentVersion();
 
         Test.setMock(HttpCalloutMock.class, new BlankTablesMockResponse());
@@ -254,6 +278,7 @@ private class ExtractionQueueableTest {
 
     @IsTest
     static void testExecuteWithEmptyTablesArrayResponse() {
+        disableAutomaticParsing();
         Spread_Document__c doc = createDocumentWithContentVersion();
 
         Test.setMock(HttpCalloutMock.class, new EmptyTablesArrayMockResponse());
@@ -267,6 +292,7 @@ private class ExtractionQueueableTest {
 
     @IsTest
     static void testExecuteWithStringPageCountResponse() {
+        disableAutomaticParsing();
         Spread_Document__c doc = createDocumentWithContentVersion();
 
         Test.setMock(HttpCalloutMock.class, new StringPageCountMockResponse());

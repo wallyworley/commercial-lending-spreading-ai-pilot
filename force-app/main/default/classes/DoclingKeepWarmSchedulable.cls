@@ -1,4 +1,4 @@
-public class DoclingKeepWarmSchedulable implements Schedulable, Database.AllowsCallouts {
+public with sharing class DoclingKeepWarmSchedulable implements Schedulable, Database.AllowsCallouts {
     private static final String DOCLING_SERVICE = 'Spread_Docling_Service_V2';
     private static final Integer REQUEST_TIMEOUT_MS = 10000;
     private static final String KEEP_WARM_PATH = '/health';

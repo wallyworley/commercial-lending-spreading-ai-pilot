@@ -1,8 +1,9 @@
-public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
+public with sharing class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
     private Id spreadDocumentId;
     private Integer attemptNumber;
     private static final String DOCLING_SERVICE = 'Spread_Docling_Service_V2';
     @TestVisible private static final Integer MAX_TRANSIENT_ATTEMPTS = 3;
+    @TestVisible private static Boolean disableParsingEnqueue = false;
 
     public ExtractionQueueable(Id spreadDocumentId) {
         this.spreadDocumentId = spreadDocumentId;
@@ -69,7 +70,7 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
     }
 
     private void enqueueParsing(Id docId) {
-        if (Test.isRunningTest()) {
+        if (disableParsingEnqueue) {
             return;
         }
         System.enqueueJob(new ParsingQueueable(docId));

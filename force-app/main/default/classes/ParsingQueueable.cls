@@ -1,4 +1,4 @@
-public class ParsingQueueable implements Queueable {
+public with sharing class ParsingQueueable implements Queueable {
     private final Id spreadDocumentId;
     private final String pathKey;
 
