@@ -60,6 +60,7 @@ Important boundary:
 | --- | --- | --- |
 | `SpreadScorecardService` | ✓ Enhanced | Calculates exact-match, dollar-weighted accuracy, and exception rates across paths. |
 | `SpreadCertificationService` | ✓ Complete | Certification workflow: certify/reject path results with reviewer signature and timestamp. |
+| `SpreadManualBaselineService` | ✓ Complete | Allows analysts to set or edit `Manual_Value__c` on a path result with a required reason and audit log entry. |
 | `Spreading_Pilot_Analyst` permission set | ✓ Complete | Controls access to Spread Document, Evidence, Line Item, and Scorecard records. |
 
 ### Analyst Workbench (LWC)
@@ -69,6 +70,7 @@ Important boundary:
 | `commercialSpreadingPilotWorkbench` LWC | ✓ Major Update | Upload, parse, review, certify, and measure pilot results. Supports document status polling, analyst-style spread review, material error reporting, scorecard display, and path comparison. |
 | Document upload and polling | ✓ Complete | File upload→Spread_Document creation→async extraction→status polling. |
 | Spread review grid | ✓ Complete | Analyst view groups rows by spread line and pivots fiscal periods into columns. Certification and rejection actions remain available. |
+| Manual baseline entry | ✓ Complete | Analysts can set or edit manual comparison values from the review grid. A reason is required and the change is logged for auditability. |
 | Scorecard display | ✓ Complete | Path comparison table with exact-match, dollar accuracy, time reduction, certification rate, and uncaught material error metrics. |
 | Material error reporting | ✓ Complete | Query and display line items with variance above thresholds. |
 
@@ -100,7 +102,7 @@ Important boundary:
 | **nCino integration** | Not yet implemented; waiting for supported nCino object API guidance. | Integrate with nCino spreads after API documentation is available. |
 | **Agentforce assistant** | Not yet integrated. | Add Agentforce / Agent Script for guided analysis and exception explanation. |
 | **Data Cloud integration** | Not yet implemented. | Optional Phase 2: add Data 360 borrower context grounded via Data Graph API. |
-| **Analyst adjustments** | Candidate values can be certified or rejected. Editable analyst override is not yet implemented. | Add an adjust action that stores analyst value separately from extracted candidate value and requires a reason. |
+| **Analyst adjustments** | Manual baseline capture is now implemented for comparison scoring. Candidate values can still only be certified or rejected, not overridden into a separate reviewed value. | Add an adjust action that stores analyst-reviewed value separately from extracted candidate value and requires a reason distinct from baseline entry. |
 
 ## Testing and Validation
 

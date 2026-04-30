@@ -325,19 +325,32 @@
                                                     </td>
                                                     <template for:each={row.periodCells} for:item="cell">
                                                         <td key={cell.key} class="col-amount">
-                                                            <div class={cell.cellClass}>
-                                                                <div class="analyst-amount__value">{cell.amountFormatted}</div>
-                                                                <div class="analyst-amount__meta">{cell.detailLabel}</div>
-                                                                <template lwc:if={cell.evidenceUrl}>
-                                                                    <lightning-formatted-url
+                                                                <div class={cell.cellClass}>
+                                                                    <div class="analyst-amount__value">{cell.amountFormatted}</div>
+                                                                    <div class="analyst-amount__meta">{cell.detailLabel}</div>
+                                                                    <template lwc:if={cell.evidenceUrl}>
+                                                                        <lightning-formatted-url
                                                                         value={cell.evidenceUrl}
-                                                                        label="Evidence"
-                                                                        target="_blank"
-                                                                    ></lightning-formatted-url>
-                                                                </template>
-                                                            </div>
-                                                        </td>
-                                                    </template>
+                                                                            label="Evidence"
+                                                                            target="_blank"
+                                                                        ></lightning-formatted-url>
+                                                                    </template>
+                                                                    <template lwc:if={cell.pathResultId}>
+                                                                        <lightning-button
+                                                                            class="slds-m-top_x-small"
+                                                                            variant="base"
+                                                                            label={cell.baselineActionLabel}
+                                                                            data-path-result-id={cell.pathResultId}
+                                                                            data-manual-value={cell.manualValue}
+                                                                            data-candidate-value={cell.candidateValue}
+                                                                            data-line-label={row.displayLine}
+                                                                            data-period-label={cell.period}
+                                                                            onclick={handleOpenBaselineDialog}
+                                                                        ></lightning-button>
+                                                                    </template>
+                                                                </div>
+                                                            </td>
+                                                        </template>
                                                     <td class="col-status">
                                                         <span class={row.statusClass}>{row.statusLabel}</span>
                                                     </td>
@@ -489,6 +502,57 @@
                         label="Confirm"
                         variant="brand"
                         onclick={handleDialogConfirm}
+                    ></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <template lwc:if={isBaselineDialogOpen}>
+        <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Set Manual Baseline"
+            class="slds-modal slds-fade-in-open"
+        >
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <h2 class="slds-text-heading_medium">Set Manual Baseline</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <p class="slds-m-bottom_small">
+                        {baselineLineLabel}
+                        <template lwc:if={baselinePeriodLabel}>
+                            <span> | {baselinePeriodLabel}</span>
+                        </template>
+                    </p>
+                    <lightning-input
+                        type="number"
+                        label="Manual Baseline Value"
+                        value={baselineAmount}
+                        step="0.01"
+                        onchange={handleBaselineAmountChange}
+                    ></lightning-input>
+                    <lightning-textarea
+                        class="slds-m-top_small"
+                        label="Reason"
+                        value={baselineReason}
+                        onchange={handleBaselineReasonChange}
+                        required
+                    ></lightning-textarea>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button
+                        label="Cancel"
+                        onclick={handleBaselineDialogCancel}
+                        class="slds-m-right_small"
+                    ></lightning-button>
+                    <lightning-button
+                        label="Save Baseline"
+                        variant="brand"
+                        onclick={handleBaselineDialogSave}
+                        disabled={isBaselineSaveDisabled}
                     ></lightning-button>
                 </footer>
             </div>

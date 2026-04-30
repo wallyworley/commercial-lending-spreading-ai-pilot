@@ -8,6 +8,7 @@ import getRunSummary from '@salesforce/apex/SpreadScorecardService.getRunSummary
 import calculateForRun from '@salesforce/apex/SpreadScorecardService.calculateForRun';
 import certifyPathResults from '@salesforce/apex/SpreadCertificationService.certifyPathResults';
 import rejectPathResults from '@salesforce/apex/SpreadCertificationService.rejectPathResults';
+import setManualBaseline from '@salesforce/apex/SpreadManualBaselineService.setManualBaseline';
 import onUpload from '@salesforce/apex/SpreadDocumentService.onUpload';
 import getDocuments from '@salesforce/apex/SpreadDocumentService.getDocuments';
 import parseDocument from '@salesforce/apex/SpreadDocumentService.parseDocument';
@@ -81,6 +82,12 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
     dialogLines = [];
     _pendingAction = null;
     _pendingIds = [];
+    isBaselineDialogOpen = false;
+    baselinePathResultId = null;
+    baselineAmount = null;
+    baselineReason = '';
+    baselineLineLabel = '';
+    baselinePeriodLabel = '';
 
     @track documents = [];
     reviewDocumentOptions = [{ label: 'All Documents', value: '' }];
@@ -173,6 +180,13 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
 
     get allSelected() {
         return this.reviewRows.length > 0 && this.reviewRows.every((row) => this.selectedLineIds[row.lineItemId]);
+    }
+
+    get isBaselineSaveDisabled() {
+        return this.isLoadingReview
+            || this.baselineAmount === null
+            || this.baselineAmount === undefined
+            || !String(this.baselineReason || '').trim();
     }
 
     get reviewRowsWithSelection() {
@@ -413,6 +427,62 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         this.openDialog('reject', row ? row.resultIds : [], row ? [row.displayLine] : []);
     }
 
+    handleOpenBaselineDialog(event) {
+        const pathResultId = event.currentTarget.dataset.pathResultId;
+        const manualValue = event.currentTarget.dataset.manualValue;
+        const candidateValue = event.currentTarget.dataset.candidateValue;
+        const lineLabel = event.currentTarget.dataset.lineLabel;
+        const periodLabel = event.currentTarget.dataset.periodLabel;
+
+        this.baselinePathResultId = pathResultId;
+        this.baselineAmount = manualValue === undefined || manualValue === null || manualValue === ''
+            ? candidateValue
+            : manualValue;
+        this.baselineReason = '';
+        this.baselineLineLabel = lineLabel || '';
+        this.baselinePeriodLabel = periodLabel || '';
+        this.isBaselineDialogOpen = true;
+    }
+
+    handleBaselineAmountChange(event) {
+        this.baselineAmount = event.detail.value;
+    }
+
+    handleBaselineReasonChange(event) {
+        this.baselineReason = event.target.value;
+    }
+
+    handleBaselineDialogCancel() {
+        this.isBaselineDialogOpen = false;
+        this.baselinePathResultId = null;
+        this.baselineAmount = null;
+        this.baselineReason = '';
+        this.baselineLineLabel = '';
+        this.baselinePeriodLabel = '';
+    }
+
+    async handleBaselineDialogSave() {
+        this.isLoadingReview = true;
+        this.clearMessages();
+        try {
+            await setManualBaseline({
+                pathResultId: this.baselinePathResultId,
+                manualValue: Number(this.baselineAmount),
+                reason: this.baselineReason
+            });
+            this.message = 'Manual baseline saved. Recalculate scorecards when you are ready to refresh pilot metrics.';
+            this.handleBaselineDialogCancel();
+            await this.loadReviewPage();
+            this.materialErrors = this.formatMaterialErrors(
+                await getMaterialErrors({ pilotRunId: this.selectedRunId })
+            );
+        } catch (error) {
+            this.handleError(error, 'Unable to save manual baseline.');
+        } finally {
+            this.isLoadingReview = false;
+        }
+    }
+
     handleBulkCertify() {
         const { ids, lines } = this.getSelectedPathResultIds();
         this.openDialog('certify', ids, lines);
@@ -547,6 +617,8 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
                 return {
                     pathKey: key,
                     pathResultId: pr.pathResultId,
+                    manualValue: pr.manualValue,
+                    candidateValue: pr.candidateValue,
                     manualFormatted: this.formatCurrency(pr.manualValue),
                     candidateFormatted: this.formatCurrency(pr.candidateValue),
                     varianceFormatted: hasManualBaseline ? this.formatCurrency(variance) : '—',
@@ -604,7 +676,11 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
             statusClass: cell?.statusClass || 'cert-status--none',
             cellClass: cell?.pathResultId ? 'analyst-amount' : 'analyst-amount analyst-amount--empty',
             pathResultId: cell?.pathResultId,
-            evidenceUrl: cell?.evidenceUrl
+            evidenceUrl: cell?.evidenceUrl,
+            hasManualBaseline,
+            manualValue: cell?.manualValue,
+            candidateValue: cell?.candidateValue,
+            baselineActionLabel: hasManualBaseline ? 'Edit Baseline' : 'Set Baseline'
         };
     }
 

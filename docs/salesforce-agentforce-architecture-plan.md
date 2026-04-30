@@ -70,7 +70,7 @@ Current direction:
 - **Flow-based review routing**: Not yet implemented; certification currently via Apex actions only.
 - **Agentforce assistant**: Not yet integrated. Defined as Phase 2 post-LWC-baseline.
 - **PDF reporting**: Report data structures defined; PDF generation pending.
-- **Analyst adjustments**: Not yet implemented. Next likely UX/data step is an adjust action that preserves extracted value and stores reviewed analyst value with reason.
+- **Analyst adjustments**: Manual baseline entry is now implemented for scoring comparison with required reason and audit log. A separate analyst-reviewed override value is still not implemented.
 
 ### Not Yet Started (Phase 2+)
 

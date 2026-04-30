@@ -41,9 +41,10 @@ As of April 29, 2026, the Salesforce-native path is implemented and tested:
 8. **Spread_Line_Item__c** records store normalized line, statement type, fiscal period, and evidence reference.
 9. **Spread_Path_Result__c** records store candidate amount, raw label/value, path key, and certification state.
 10. **Analyst review** through LWC workbench: periods pivot into columns, evidence links are visible, material lines can be certified or rejected.
-11. **SpreadCertificationService** records certification status and reviewer signature.
-12. **SpreadScorecardService** calculates exact-match rate, dollar-weighted accuracy, exceptions, and time reduction.
-13. **Optional nCino reconciliation** after Salesforce certification, pending future nCino adapter.
+11. **SpreadManualBaselineService** lets analysts set or edit the manual comparison baseline with a required reason and audit log.
+12. **SpreadCertificationService** records certification status and reviewer signature.
+13. **SpreadScorecardService** calculates exact-match rate, dollar-weighted accuracy, exceptions, and time reduction.
+14. **Optional nCino reconciliation** after Salesforce certification, pending future nCino adapter.
 
 ### Key Components
 
@@ -51,6 +52,7 @@ As of April 29, 2026, the Salesforce-native path is implemented and tested:
 - `Spread_Extraction_Evidence__c`: Raw extracted evidence (tables, text, page references, immutable audit trail)
 - `Spread_Line_Item__c`: Canonical spread row by borrower/document/period/normalized line.
 - `Spread_Path_Result__c`: Candidate amount, raw label/value, comparison path, exception state, and certification state.
+- `Spread_Path_Result__c.Manual_Value__c`: Analyst-maintained comparison baseline used for scorecard and variance evaluation.
 - `Commercial_Loan__c`: Sandbox loan cockpit object for avoiding nCino dependency during prototype work.
 - `commercialSpreadingPilotWorkbench` LWC: Analyst UI for upload, review, certify, scorecard, and error reporting.
 
@@ -65,6 +67,7 @@ Every extracted value is traceable to source evidence:
 - `Spread_Extraction_Evidence__c` preserves raw Docling output.
 - `Spread_Line_Item__c` stores line and period context.
 - `Spread_Path_Result__c` stores candidate value and links to primary evidence.
+- Manual baseline updates require a reason and write an audit log event before affecting scorecards.
 - Certification records include reviewer signature and timestamp.
 - Seven-year retention policy for evidence remains a production design item.
 
@@ -125,6 +128,7 @@ Borrower document
 | ParsingQueueable | Async parsing of evidence into draft candidates |
 | SpreadEvidenceParserService | Deterministic evidence parser with period inference and line mapping |
 | SpreadCandidateParserService | Imports parser JSON into spread line items and path results |
+| SpreadManualBaselineService | Writes analyst-entered manual baseline values with required reason and audit log |
 | SpreadScorecardService | Calculates exact-match, dollar accuracy, exceptions |
 | SpreadCertificationService | Certification workflow and reviewer signature |
 | SpreadLineMappingSelector | Retrieves active line mappings for spread schema |
