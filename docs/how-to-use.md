@@ -1,6 +1,15 @@
 # How to Use This Project
 
-Use this project as the working folder for deciding whether AI financial spreading is safe enough to buy or implement. It is not an app that connects to Salesforce or nCino yet. It is a pilot-control package: charter, architecture, test templates, source register, and a scorecard.
+Use this project as the working folder for deciding whether automated financial spreading is safe enough to buy or implement. It now includes a working Salesforce-native Agentforce sandbox flow, plus the pilot-control package: charter, architecture, test templates, source register, and scorecard.
+
+Current implementation note, 2026-04-29:
+
+- The working UI is the `commercialSpreadingPilotWorkbench` LWC on `Commercial_Loan__c` record pages.
+- Documents are uploaded to Salesforce Files.
+- Docling extracts source text/tables.
+- Deterministic Apex currently parses known financial statement labels and periods.
+- Values are draft candidates until an analyst certifies them.
+- nCino integration is intentionally deferred for now.
 
 ## 1. Start With the Decision
 
@@ -32,7 +41,7 @@ Use `docs/pilot-charter.md` in a working session with:
 Confirm these before testing:
 
 - Initial portfolio is C&I, not CRE.
-- AI output is draft-only.
+- Automated extraction/parsing output is draft-only.
 - Human certification is mandatory for material values.
 - nCino Automated Spreading is being tested against alternatives, not assumed to win.
 - Production is blocked unless every gate passes.
@@ -92,15 +101,52 @@ Each row should represent one spread line item, such as:
 
 ## 5. Run the Three Pilot Paths
 
-Run the same document set through each path:
+Run the same document set through each path as the pilot matures:
 
 | Path | What to Do |
 | --- | --- |
-| `ncino_automated_spreading` | Run documents through nCino Automated Spreading using supported nCino Document Manager and Spreads workflow. |
-| `salesforce_native_staging` | Run documents through the Salesforce-supported extraction/staging design. If this is not built yet, score it as a design alternative after a small proof of concept. |
-| `manual_ncino_control` | Measure current or improved manual nCino Document Manager and Spreads workflow. This is the baseline. |
+| `ncino_automated_spreading` | Deferred for now. Run documents through nCino Automated Spreading later using supported nCino Document Manager and Spreads workflow. |
+| `salesforce_native_staging` | **Now available in Salesforce**: Upload documents via the pilot workbench LWC, monitor extraction status, review parsed line items, and certify candidates. See `docs/implementation-status.md` for component details. |
+| `manual_ncino_control` | Later baseline. Measure current or improved manual nCino Document Manager and Spreads workflow. |
 
 The manual control path does not need to reduce time. It establishes the baseline the AI paths must beat.
+
+### Using the Salesforce Workbench
+
+The LWC workbench (`commercialSpreadingPilotWorkbench`) provides:
+- Document upload and extraction status monitoring
+- Parsed line-item review grid with sort and filter
+- Material error detection and reporting
+- Certification workflow for each line item
+- Scorecard calculation and path comparison
+- Document retry if extraction fails
+
+In the current Agentforce sandbox, use the Commercial Loans tab or App Launcher:
+
+```text
+Commercial Loans -> open a Commercial Loan record -> C&I Spreading Evidence Pilot
+```
+
+The record page workbench will create or reuse the loan-scoped pilot run.
+
+### Current Analyst Flow
+
+1. Open a `Commercial_Loan__c` record.
+2. Upload a financial statement on the Document Corpus tab.
+3. Watch the document reach `Extraction = Complete`.
+4. If parsing does not run automatically, click `Parse Ready Documents`.
+5. Open the Spread Review tab.
+6. Review the analyst-style grid, where fiscal periods are columns.
+7. Use `Evidence` links to inspect the extracted source text.
+8. Certify values that are acceptable.
+9. Reject values that need correction or mapping changes.
+
+Current behavior:
+
+- `Candidate_Value__c` stores the extracted/parser value.
+- `Manual_Value__c` is reserved for baseline/manual comparison and future analyst adjustments.
+- The screen does not overwrite extracted values directly.
+- Future adjustment work should store analyst-entered values separately and require a reason.
 
 ## 6. Capture Extraction Results
 
@@ -119,6 +165,12 @@ This file answers:
 - Was it reviewed?
 - Was it certified?
 - Did it become final spread data?
+
+In the Salesforce implementation, the same evidence is captured natively:
+
+- `Spread_Extraction_Evidence__c`: raw extracted source text/table evidence.
+- `Spread_Line_Item__c`: normalized line and period.
+- `Spread_Path_Result__c`: candidate value, raw label/value, certification status, and reviewer result.
 
 ## 7. Fill Out the Scorecard
 
@@ -214,3 +266,11 @@ For the first 60-minute meeting, do this:
 5. Decide what counts as a material line item for the bank.
 
 After that meeting, the project becomes a checklist-driven evidence folder.
+
+## Tomorrow Pickup Checklist
+
+1. Refresh the Commercial Loan record page and confirm the new analyst spread view loads.
+2. Upload more synthetic balance sheets and income statements from the sample document folder.
+3. Confirm period columns and extracted amounts look right.
+4. Identify the first labels that fail mapping and add `Spread_Line_Mapping__mdt` records.
+5. Decide whether the next UX step is analyst adjustment entry or better evidence preview.

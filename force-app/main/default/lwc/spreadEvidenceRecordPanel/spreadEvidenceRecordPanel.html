@@ -1,0 +1,69 @@
+<template>
+    <lightning-card title="Evidence Source" icon-name="standard:file">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading evidence context" size="small"></lightning-spinner>
+            </template>
+
+            <template lwc:elseif={errorMessage}>
+                <div class="error-box" role="alert">{errorMessage}</div>
+            </template>
+
+            <template lwc:elseif={view}>
+                <div class="source-grid">
+                    <div>
+                        <p class="label">Spread Document</p>
+                        <lightning-formatted-url
+                            value={spreadDocumentUrl}
+                            label={spreadDocumentLabel}
+                        ></lightning-formatted-url>
+                    </div>
+                    <div>
+                        <p class="label">Source File</p>
+                        <template lwc:if={sourceFileUrl}>
+                            <lightning-formatted-url
+                                value={sourceFileUrl}
+                                label="Open source file"
+                                target="_blank"
+                            ></lightning-formatted-url>
+                        </template>
+                        <template lwc:else>
+                            <span class="muted">No source file is linked to the parent document.</span>
+                        </template>
+                    </div>
+                    <div>
+                        <p class="label">Extraction</p>
+                        <p>{view.provider} · {view.extractionEngine} · {view.extractionStatus}</p>
+                    </div>
+                    <div>
+                        <p class="label">Page</p>
+                        <p>{view.sourcePage}</p>
+                    </div>
+                </div>
+
+                <template lwc:if={sourceFileUrl}>
+                    <div class="source-callout">
+                        <div>
+                            <p class="callout-title">Need the original statement?</p>
+                            <p class="muted">Open the Salesforce file in a new tab while keeping this extracted evidence in view.</p>
+                        </div>
+                        <lightning-button
+                            label="Open Source File"
+                            variant="brand"
+                            onclick={openSourceFile}
+                        ></lightning-button>
+                    </div>
+                </template>
+
+                <lightning-tabset>
+                    <lightning-tab label="Extracted Text">
+                        <pre class="evidence-text">{rawText}</pre>
+                    </lightning-tab>
+                    <lightning-tab label="Table Markdown">
+                        <pre class="evidence-text">{rawTableMarkdown}</pre>
+                    </lightning-tab>
+                </lightning-tabset>
+            </template>
+        </div>
+    </lightning-card>
+</template>

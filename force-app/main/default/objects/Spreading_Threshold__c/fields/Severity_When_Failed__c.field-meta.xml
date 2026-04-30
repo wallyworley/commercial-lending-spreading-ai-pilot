@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Severity_When_Failed__c</fullName>
+    <externalId>false</externalId>
+    <label>Severity When Failed</label>
+    <required>true</required>
+    <trackHistory>true</trackHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Warning</fullName>
+                <default>true</default>
+                <label>Warning</label>
+            </value>
+            <value>
+                <fullName>Policy Exception</fullName>
+                <default>false</default>
+                <label>Policy Exception</label>
+            </value>
+            <value>
+                <fullName>Hard Stop</fullName>
+                <default>false</default>
+                <label>Hard Stop</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

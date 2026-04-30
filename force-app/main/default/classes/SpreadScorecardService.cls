@@ -46,6 +46,9 @@ public with sharing class SpreadScorecardService {
 
             List<Pilot_Scorecard_Result__c> scorecards = new List<Pilot_Scorecard_Result__c>();
             for (Bucket bucket : buckets.values()) {
+                if (!bucket.hasScoreableRows()) {
+                    continue;
+                }
                 scorecards.add(bucket.toScorecard(pilotRunId));
             }
             if (!scorecards.isEmpty()) {
@@ -120,7 +123,11 @@ public with sharing class SpreadScorecardService {
         }
 
         void add(Spread_Path_Result__c result) {
-            Decimal manualValue = valueOrZero(result.Manual_Value__c);
+            if (result.Manual_Value__c == null) {
+                return;
+            }
+
+            Decimal manualValue = result.Manual_Value__c;
             Decimal candidateValue = valueOrZero(result.Candidate_Value__c);
             Boolean exact = manualValue == candidateValue;
             Boolean material = result.Spread_Line_Item__r != null && result.Spread_Line_Item__r.Material__c == true;
@@ -142,6 +149,10 @@ public with sharing class SpreadScorecardService {
                     uncaughtMaterialErrors++;
                 }
             }
+        }
+
+        Boolean hasScoreableRows() {
+            return rowCount > 0;
         }
 
         Pilot_Scorecard_Result__c toScorecard(Id pilotRunId) {
@@ -195,4 +206,3 @@ public with sharing class SpreadScorecardService {
         return value == null ? 0 : value;
     }
 }
-

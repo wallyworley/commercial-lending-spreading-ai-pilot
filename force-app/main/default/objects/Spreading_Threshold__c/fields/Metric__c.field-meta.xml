@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Metric__c</fullName>
+    <externalId>false</externalId>
+    <label>Metric</label>
+    <required>true</required>
+    <trackHistory>true</trackHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>DSCR</fullName>
+                <default>false</default>
+                <label>DSCR</label>
+            </value>
+            <value>
+                <fullName>FCCR</fullName>
+                <default>false</default>
+                <label>FCCR</label>
+            </value>
+            <value>
+                <fullName>Current Ratio</fullName>
+                <default>false</default>
+                <label>Current Ratio</label>
+            </value>
+            <value>
+                <fullName>Debt / EBITDA</fullName>
+                <default>false</default>
+                <label>Debt / EBITDA</label>
+            </value>
+            <value>
+                <fullName>Debt-to-Worth</fullName>
+                <default>false</default>
+                <label>Debt-to-Worth</label>
+            </value>
+            <value>
+                <fullName>Working Capital</fullName>
+                <default>false</default>
+                <label>Working Capital</label>
+            </value>
+            <value>
+                <fullName>AR Days</fullName>
+                <default>false</default>
+                <label>AR Days</label>
+            </value>
+            <value>
+                <fullName>Inventory Days</fullName>
+                <default>false</default>
+                <label>Inventory Days</label>
+            </value>
+            <value>
+                <fullName>Exact Match Rate</fullName>
+                <default>false</default>
+                <label>Exact Match Rate</label>
+            </value>
+            <value>
+                <fullName>Dollar Accuracy</fullName>
+                <default>false</default>
+                <label>Dollar Accuracy</label>
+            </value>
+            <value>
+                <fullName>Certification Rate</fullName>
+                <default>false</default>
+                <label>Certification Rate</label>
+            </value>
+            <value>
+                <fullName>Uncaught Material Errors</fullName>
+                <default>false</default>
+                <label>Uncaught Material Errors</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

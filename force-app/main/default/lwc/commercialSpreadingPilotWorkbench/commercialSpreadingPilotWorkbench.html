@@ -3,15 +3,23 @@
         <div class="slds-p-around_medium workbench">
             <div class="slds-grid slds-wrap slds-gutters_small slds-m-bottom_medium">
                 <div class="slds-col slds-size_1-of-1 slds-large-size_8-of-12">
-                    <lightning-combobox
-                        name="pilotRun"
-                        label="Pilot Run"
-                        value={selectedRunId}
-                        options={runOptions}
-                        placeholder="Select a pilot run"
-                        onchange={handleRunChange}
-                        disabled={isLoading}
-                    ></lightning-combobox>
+                    <template lwc:if={showPilotRunPicker}>
+                        <lightning-combobox
+                            name="pilotRun"
+                            label="Pilot Run"
+                            value={selectedRunId}
+                            options={runOptions}
+                            placeholder="Select a pilot run"
+                            onchange={handleRunChange}
+                            disabled={isLoading}
+                        ></lightning-combobox>
+                    </template>
+                    <template lwc:else>
+                        <div class="loan-context">
+                            <p class="slds-text-title_caps">Commercial Loan</p>
+                            <p class="slds-text-heading_small">{workbenchContextLabel}</p>
+                        </div>
+                    </template>
                 </div>
                 <div class="slds-col slds-size_1-of-1 slds-large-size_4-of-12 actions">
                     <lightning-button
@@ -112,7 +120,13 @@
                                                 <tbody>
                                                     <template for:each={documents} for:item="doc">
                                                         <tr key={doc.id}>
-                                                            <td>{doc.name}</td>
+                                                            <td>
+                                                                <lightning-formatted-url
+                                                                    value={doc.recordUrl}
+                                                                    label={doc.name}
+                                                                    target="_blank"
+                                                                ></lightning-formatted-url>
+                                                            </td>
                                                             <td>{doc.documentType}</td>
                                                             <td>{doc.statementType}</td>
                                                             <td>{doc.fiscalPeriod}</td>
@@ -121,7 +135,7 @@
                                                                 <span class={doc.extractionStatusClass}>{doc.extractionStatus}</span>
                                                             </td>
                                                             <td>
-                                                                <span class={doc.parsingStatusClass}>{doc.parsingStatus}</span>
+                                                                <span class={doc.parsingStatusClass}>{doc.parsingDisplayStatus}</span>
                                                             </td>
                                                             <td>{doc.evidenceCount}</td>
                                                             <td>{doc.extractedAt}</td>
@@ -259,7 +273,7 @@
 
                             <template lwc:if={hasReviewRows}>
                                 <div class="spread-grid-container">
-                                    <table class="slds-table slds-table_cell-buffer slds-table_bordered spread-grid">
+                                    <table class="slds-table slds-table_cell-buffer slds-table_bordered analyst-spread-grid">
                                         <thead>
                                             <tr class="slds-text-title_caps">
                                                 <th class="col-check" scope="col">
@@ -271,71 +285,75 @@
                                                         onchange={handleSelectAll}
                                                     ></lightning-input>
                                                 </th>
-                                                <th class="col-line" scope="col">Document</th>
+                                                <th class="col-document" scope="col">Document</th>
                                                 <th class="col-line" scope="col">Spread Line</th>
-                                                <th class="col-period" scope="col">Period</th>
                                                 <th class="col-material" scope="col">Material</th>
-                                                <template for:each={pathColumns} for:item="col">
-                                                    <th key={col} class="col-path" scope="col">{col}</th>
+                                                <template for:each={periodColumns} for:item="period">
+                                                    <th key={period} class="col-amount" scope="col">{period}</th>
                                                 </template>
+                                                <th class="col-status" scope="col">Status</th>
                                                 <th class="col-actions" scope="col">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <template for:each={reviewRowsWithSelection} for:item="row">
-                                                <tr key={row.lineItemId}>
+                                            <template for:each={analystRowsWithSelection} for:item="row">
+                                                <tr key={row.key}>
                                                     <td class="col-check">
                                                         <lightning-input
                                                             type="checkbox"
                                                             label="Select row"
                                                             variant="label-hidden"
                                                             checked={row.isSelected}
-                                                            data-line-id={row.lineItemId}
-                                                            onchange={handleRowSelect}
+                                                            data-row-key={row.key}
+                                                            onchange={handleAnalystRowSelect}
                                                         ></lightning-input>
                                                     </td>
-                                                    <td class="col-line">{row.documentName}</td>
-                                                    <td class="col-line">{row.normalizedLine}</td>
-                                                    <td class="col-period">{row.fiscalPeriod}</td>
+                                                    <td class="col-document">
+                                                        <lightning-formatted-url
+                                                            value={row.documentUrl}
+                                                            label={row.documentName}
+                                                            target="_blank"
+                                                        ></lightning-formatted-url>
+                                                    </td>
+                                                    <td class="col-line">
+                                                        <strong>{row.displayLine}</strong>
+                                                    </td>
                                                     <td class="col-material">
                                                         <template lwc:if={row.material}>
                                                             <span class="slds-badge cert-status--material">Material</span>
                                                         </template>
                                                     </td>
-                                                    <template for:each={row.pathCells} for:item="cell">
-                                                        <td key={cell.pathKey} class="col-path">
-                                                            <div class="path-cell">
-                                                                <div class="path-cell__row">
-                                                                    <span class="path-cell__label">Manual</span>
-                                                                    <span class="path-cell__value">{cell.manualFormatted}</span>
-                                                                </div>
-                                                                <div class="path-cell__row">
-                                                                    <span class="path-cell__label">AI</span>
-                                                                    <span class="path-cell__value">{cell.candidateFormatted}</span>
-                                                                </div>
-                                                                <div class="path-cell__row">
-                                                                    <span class="path-cell__label">Δ</span>
-                                                                    <span class={cell.varianceClass}>{cell.varianceFormatted}</span>
-                                                                </div>
-                                                                <div class="path-cell__row">
-                                                                    <span class={cell.statusClass}>{cell.certificationStatus}</span>
-                                                                </div>
+                                                    <template for:each={row.periodCells} for:item="cell">
+                                                        <td key={cell.key} class="col-amount">
+                                                            <div class={cell.cellClass}>
+                                                                <div class="analyst-amount__value">{cell.amountFormatted}</div>
+                                                                <div class="analyst-amount__meta">{cell.detailLabel}</div>
+                                                                <template lwc:if={cell.evidenceUrl}>
+                                                                    <lightning-formatted-url
+                                                                        value={cell.evidenceUrl}
+                                                                        label="Evidence"
+                                                                        target="_blank"
+                                                                    ></lightning-formatted-url>
+                                                                </template>
                                                             </div>
                                                         </td>
                                                     </template>
+                                                    <td class="col-status">
+                                                        <span class={row.statusClass}>{row.statusLabel}</span>
+                                                    </td>
                                                     <td class="col-actions">
                                                         <lightning-button-group>
                                                             <lightning-button
                                                                 label="Certify"
                                                                 variant="success"
-                                                                data-line-id={row.lineItemId}
-                                                                onclick={handleRowCertify}
+                                                                data-row-key={row.key}
+                                                                onclick={handleAnalystRowCertify}
                                                                 disabled={isLoadingReview}
                                                             ></lightning-button>
                                                             <lightning-button
                                                                 label="Reject"
-                                                                data-line-id={row.lineItemId}
-                                                                onclick={handleRowReject}
+                                                                data-row-key={row.key}
+                                                                onclick={handleAnalystRowReject}
                                                                 disabled={isLoadingReview}
                                                             ></lightning-button>
                                                         </lightning-button-group>
@@ -366,6 +384,69 @@
 
                             <template lwc:if={isReviewEmpty}>
                                 <p class="empty-state">No spread lines found for this run.</p>
+                            </template>
+                        </div>
+                    </lightning-tab>
+                    <lightning-tab label="Policy Thresholds" value="policy">
+                        <div class="slds-p-top_small">
+                            <template lwc:if={isLoadingPolicy}>
+                                <lightning-spinner alternative-text="Loading policy thresholds" size="small"></lightning-spinner>
+                            </template>
+
+                            <template lwc:if={activePolicy}>
+                                <section class="slds-m-bottom_medium">
+                                    <div class="section-heading">
+                                        <h2 class="slds-text-heading_medium">{activePolicy.policyName}</h2>
+                                        <p>
+                                            Version {activePolicy.policyVersion}
+                                            &nbsp;&bull;&nbsp; {activePolicy.portfolio}
+                                            &nbsp;&bull;&nbsp; Status: {activePolicy.policyStatus}
+                                            <template lwc:if={activePolicy.dualApproved}>
+                                                &nbsp;&bull;&nbsp; <span class="slds-badge slds-badge_success">Dual Approved</span>
+                                            </template>
+                                        </p>
+                                    </div>
+
+                                    <template lwc:if={hasThresholds}>
+                                        <div class="spread-grid-container">
+                                            <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                                                <thead>
+                                                    <tr class="slds-text-title_caps">
+                                                        <th scope="col">Metric</th>
+                                                        <th scope="col">Threshold</th>
+                                                        <th scope="col">Severity</th>
+                                                        <th scope="col">Material Only</th>
+                                                        <th scope="col">Exception Required</th>
+                                                        <th scope="col">Guidance</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <template for:each={thresholds} for:item="row">
+                                                        <tr key={row.thresholdId}>
+                                                            <td>{row.metric}</td>
+                                                            <td>{row.displayRange}</td>
+                                                            <td><span class={row.severityClass}>{row.severity}</span></td>
+                                                            <td>{row.materialLabel}</td>
+                                                            <td>{row.exceptionLabel}</td>
+                                                            <td class="slds-text-body_small">{row.narrativeGuidance}</td>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </template>
+                                    <template lwc:else>
+                                        <p class="empty-state">No thresholds configured for this policy.</p>
+                                    </template>
+                                </section>
+                            </template>
+
+                            <template lwc:else>
+                                <template lwc:if={isLoadingPolicy}>
+                                </template>
+                                <template lwc:else>
+                                    <p class="empty-state">No active policy found for the selected portfolio. Seed and activate a policy first.</p>
+                                </template>
                             </template>
                         </div>
                     </lightning-tab>

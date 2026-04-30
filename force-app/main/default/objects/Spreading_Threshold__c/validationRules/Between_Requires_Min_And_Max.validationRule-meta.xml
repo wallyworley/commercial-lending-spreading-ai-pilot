@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Between_Requires_Min_And_Max</fullName>
+    <active>true</active>
+    <description>When Operator is Between, both Minimum Value and Maximum Value are required.</description>
+    <errorConditionFormula>ISPICKVAL(Operator__c, 'Between') &amp;&amp; (ISNULL(Minimum_Value__c) || ISNULL(Maximum_Value__c))</errorConditionFormula>
+    <errorDisplayField>Operator__c</errorDisplayField>
+    <errorMessage>Both Minimum Value and Maximum Value are required when Operator is Between.</errorMessage>
+</ValidationRule>

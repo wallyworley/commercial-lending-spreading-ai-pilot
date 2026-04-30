@@ -2,13 +2,21 @@
 
 This project should use Salesforce's preferred **External Credential + Named Credential** pattern for the Render-hosted Docling service.
 
+Current status, 2026-04-29:
+
+- `Spread_Docling_Service_V2` is the active Named Credential.
+- The Agentforce org has working credentials.
+- `ExtractionQueueable` uses `callout:Spread_Docling_Service_V2/extract`.
+- `DoclingKeepWarmSchedulable` calls `/health`.
+- Transient Render loading failures now retry before final extraction failure.
+
 ## Target Pattern
 
 - External Credential: custom authentication, named principal
 - Principal secret: Docling API key
 - Custom header: `Api-Key`
 - Named Credential: `Spread_Docling_Service_V2`
-- Apex endpoint usage: `callout:Spread_Docling_Service/...`
+- Apex endpoint usage: `callout:Spread_Docling_Service_V2/...`
 
 ## Why this pattern
 
@@ -73,6 +81,14 @@ DOCLING_API_KEY=<same-secret-stored-in-salesforce>
 REQUIRE_API_KEY=true
 ```
 
+Recommended service behavior for sandbox testing:
+
+- Keep `/health` lightweight and authenticated.
+- Return HTTP 200 only when the app is ready to accept extraction requests.
+- Keep native PDF text extraction enabled for text-layer PDFs.
+- Use clear 4xx errors for credential or request issues.
+- Treat 502/503/504 and chunk termination as transient from Salesforce.
+
 ## Validation
 
 After the org and Render are configured, validate with the Apex credential probe:
@@ -87,3 +103,34 @@ Expected result:
 - body contains `authorized`
 
 After that, retry extraction on a pilot document.
+
+## Keep-Warm Schedule
+
+The Agentforce org currently schedules `DoclingKeepWarmSchedulable` every 10 minutes through six cron jobs:
+
+- `Docling Keep Warm 00`
+- `Docling Keep Warm 10`
+- `Docling Keep Warm 20`
+- `Docling Keep Warm 30`
+- `Docling Keep Warm 40`
+- `Docling Keep Warm 50`
+
+If extraction starts failing with Render loading pages, verify:
+
+```soql
+SELECT Id, CronJobDetail.Name, State, NextFireTime, PreviousFireTime, TimesTriggered
+FROM CronTrigger
+WHERE CronJobDetail.Name LIKE 'Docling Keep Warm%'
+ORDER BY NextFireTime ASC
+```
+
+## Transient Failure Handling
+
+The extraction queueable retries these transient conditions before marking the document failed:
+
+- HTTP 502, 503, or 504.
+- Render `Application loading` page.
+- Premature chunk termination.
+- Timeout/read timeout messages.
+
+Historical `Spread_Exception__c` records are not deleted when a later retry succeeds. Use the current `Spread_Document__c.Extraction_Status__c` and latest evidence records to determine current state.

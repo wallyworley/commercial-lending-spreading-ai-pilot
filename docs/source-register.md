@@ -2,6 +2,10 @@
 
 This pilot uses Salesforce and nCino sources only. Public official sources support the initial architecture and control design. Private nCino implementation, security, and model documentation must be requested under NDA before purchase or production approval.
 
+Current source-discipline note, 2026-04-29:
+
+The working sandbox prototype also uses Docling on Render as an implementation dependency for document extraction. That does not make Docling a production-approved vendor or a benchmark source. Production approval still requires bank information-security review, vendor review, and a final decision on whether to use Docling, Salesforce-native extraction, nCino extraction, or another approved provider.
+
 ## nCino Sources
 
 | Source | URL | Pilot Use |
@@ -28,4 +32,5 @@ This pilot uses Salesforce and nCino sources only. Public official sources suppo
 - Do not treat public marketing claims as implementation guarantees.
 - Treat Salesforce Help pages that require authenticated access as official but validate details in the bank's Salesforce org and licensed documentation.
 - Treat private nCino Community and implementation documents as controlling for product behavior once obtained.
-
+- Treat Docling/Render behavior as sandbox implementation evidence only until production vendor review is complete.
+- Distinguish extraction-provider evidence from parser evidence. Docling extracts source text/tables; the current parser is deterministic Apex in Salesforce.

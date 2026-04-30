@@ -4,6 +4,10 @@ Research date: April 20, 2026
 
 This primer explains financial statement spreading from the perspective of a commercial credit analyst or underwriter. It is intended to improve the AI spreading pilot by making the test data, scorecard, and report more faithful to commercial banking credit work.
 
+Prototype note, 2026-04-29:
+
+The current Agentforce sandbox prototype is now closer to a real spreading workflow because the review screen groups normalized lines and pivots fiscal periods into columns. That is the expected analyst mental model: line down the left, periods across the top, values in the body, evidence and certification nearby.
+
 ## 1. What Spreading Is
 
 Spreading is the process of taking borrower financial information from source documents and normalizing it into a consistent credit-analysis format across borrowers, periods, entities, and document types.
@@ -159,6 +163,12 @@ AI can reasonably assist with:
 - Suggesting normalized line-item mappings for review.
 - Reducing duplicate keying.
 
+In the current prototype, this assistance is split:
+
+- Docling extracts source text and table content.
+- Deterministic Apex maps known labels and periods to spread candidates.
+- Future Agentforce/Prompt Builder work may help with ambiguous labels, unmapped lines, explanation, and exception review.
+
 AI should not independently:
 
 - Certify final spread values.
@@ -168,6 +178,8 @@ AI should not independently:
 - Decide primary source of repayment.
 - Approve or decline a loan.
 - Replace credit policy or human underwriting judgment.
+
+The prototype follows this rule by keeping candidate values in staging records until an analyst certifies or rejects them.
 
 ## 11. How This Changes the Pilot
 
@@ -183,6 +195,16 @@ In addition to exact line-item match and dollar-weighted accuracy, the pilot sho
 - Whether analyst review time improves without weakening judgment.
 
 The strongest test cases are not the neat PDFs. They are the cases where a real analyst would slow down: tax returns, interim statements, scanned statements, multi-period filings, guarantor/global cash flow, and AR/inventory schedules.
+
+For tomorrow's testing, prioritize samples that expose real analyst friction:
+
+- Two-year and three-year balance sheets.
+- Multi-period income statements.
+- Values reported in thousands.
+- Parentheses for negative values and contra accounts.
+- Debt schedules and current maturities.
+- Notes that change classification.
+- Labels that differ from the current `Spread_Line_Mapping__mdt` records.
 
 ## Verified Sources
 
@@ -201,4 +223,3 @@ The strongest test cases are not the neat PDFs. They are the cases where a real 
 - SEC Investor.gov, Form 10-Q: https://www.investor.gov/introduction-investing/investing-basics/glossary/form-10-q
 - nCino Credit Analysis Suite: https://www.ncino.com/en-US/solutions/credit-analysis
 - nCino Automated Spreading: https://www.ncino.com/solutions/automated-spreading
-

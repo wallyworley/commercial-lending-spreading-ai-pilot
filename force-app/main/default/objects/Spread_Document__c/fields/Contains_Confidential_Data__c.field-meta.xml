@@ -3,6 +3,7 @@
     <fullName>Contains_Confidential_Data__c</fullName>
     <defaultValue>false</defaultValue>
     <label>Contains Confidential Data</label>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
     <type>Checkbox</type>
 </CustomField>
-

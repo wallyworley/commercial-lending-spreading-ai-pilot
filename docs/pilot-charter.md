@@ -4,6 +4,10 @@
 
 Determine whether AI-assisted C&I financial spreading can safely reduce analyst effort while preserving credit quality, auditability, and regulatory defensibility.
 
+Current prototype note, 2026-04-29:
+
+The active build is an Agentforce sandbox prototype, not a production nCino integration. It uses a fake `Commercial_Loan__c` object as the working loan context, Salesforce Files for upload, Docling for extraction, deterministic Apex for parsing, and an LWC workbench for analyst review.
+
 ## Scope
 
 Initial scope is C&I borrower financial documents only:
@@ -20,13 +24,15 @@ CRE packages, rent rolls, personal financial statements, collateral valuation, a
 
 ## Paths Under Evaluation
 
-1. nCino Automated Spreading, using nCino-supported Document Manager and Spreads workflows.
-2. Salesforce-native document extraction and staging, using Financial Services Cloud document controls and supported Document AI or Intelligent Document Reader patterns.
-3. Manual nCino Document Manager and Spreads workflow, improved as the operational control case.
+1. Salesforce-native document extraction and staging, currently implemented in the Agentforce sandbox.
+2. nCino Automated Spreading, deferred until nCino scope and supported APIs are reopened.
+3. Manual spreading control path, deferred until the Salesforce-native workflow is stable enough for time comparison.
 
 ## Operating Model
 
 AI output is draft-only. A generated value can prefill a staging record, but it cannot be treated as final spread data until a credit user certifies it.
+
+Current parser output is better described as automated extraction/parsing output, not AI output. It is still draft-only and subject to the same certification rule.
 
 Every staged line item must retain:
 
@@ -64,6 +70,13 @@ The pilot passes only if all gates are met:
 - Low-confidence, missing, ambiguous, duplicate, or unmapped values route to review.
 - All material AI-generated line items are human-certified before final use.
 
+For the current deterministic parser, add these near-term gates before expanding scope:
+
+- Multi-period rows produce the correct amount for each period.
+- Extracted values remain traceable to `Spread_Extraction_Evidence__c`.
+- The analyst can understand the screen without reading object names or path keys.
+- Failed extraction can be retried without creating duplicate final results.
+
 ## Decision Outcomes
 
 | Outcome | Meaning |
@@ -71,4 +84,3 @@ The pilot passes only if all gates are met:
 | Proceed | All gates pass and risk owners approve a controlled production rollout. |
 | Remediate and Retest | One or more gates fail but the failure has a bounded, fixable cause. |
 | Do Not Proceed | Accuracy, controls, source traceability, vendor evidence, or operating risk is unacceptable. |
-

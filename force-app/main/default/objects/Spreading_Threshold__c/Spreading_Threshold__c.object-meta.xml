@@ -13,6 +13,6 @@
         <type>Text</type>
     </nameField>
     <pluralLabel>Spreading Thresholds</pluralLabel>
-    <sharingModel>Private</sharingModel>
+    <sharingModel>ControlledByParent</sharingModel>
 </CustomObject>
 

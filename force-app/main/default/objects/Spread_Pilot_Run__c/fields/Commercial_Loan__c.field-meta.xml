@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Commercial_Loan__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>Commercial Loan</label>
+    <referenceTo>Commercial_Loan__c</referenceTo>
+    <relationshipLabel>Spread Pilot Runs</relationshipLabel>
+    <relationshipName>Spread_Pilot_Runs</relationshipName>
+    <type>Lookup</type>
+</CustomField>

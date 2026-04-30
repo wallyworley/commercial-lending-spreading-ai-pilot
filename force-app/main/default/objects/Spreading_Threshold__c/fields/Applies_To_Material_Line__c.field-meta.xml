@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Applies_To_Material_Line__c</fullName>
+    <defaultValue>false</defaultValue>
+    <externalId>false</externalId>
+    <label>Applies To Material Line</label>
+    <trackHistory>true</trackHistory>
+    <type>Checkbox</type>
+</CustomField>

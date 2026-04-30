@@ -10,6 +10,23 @@ public class SpreadTestDataFactory {
         return run;
     }
 
+    public static Commercial_Loan__c createCommercialLoan() {
+        Account borrower = new Account(Name = 'Synthetic Borrower');
+        insert borrower;
+
+        Commercial_Loan__c loan = new Commercial_Loan__c(
+            Borrower__c = borrower.Id,
+            Loan_Amount__c = 2500000,
+            Request_Type__c = 'New',
+            Portfolio__c = 'C&I',
+            Stage__c = 'Intake',
+            Purpose__c = 'Working capital line of credit',
+            Assigned_Analyst__c = UserInfo.getUserId()
+        );
+        insert loan;
+        return loan;
+    }
+
     public static Spread_Document__c createDocument(Id runId) {
         Account borrower = new Account(Name = 'Synthetic Borrower');
         insert borrower;
@@ -72,4 +89,3 @@ public class SpreadTestDataFactory {
         return result;
     }
 }
-

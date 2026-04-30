@@ -32,6 +32,8 @@ private class SpreadCandidateParserServiceTest {
                 },
                 new Map<String, Object>{
                     'normalized_line' => 'ebitda',
+                    'statement_type' => 'income_statement',
+                    'fiscal_period' => 'Q3 2025',
                     'raw_label' => 'EBITDA',
                     'raw_value' => '$1,530,000',
                     'normalized_value' => 1530000,
@@ -60,7 +62,7 @@ private class SpreadCandidateParserServiceTest {
         Assert.areEqual('Complete', result.parsingStatus);
 
         List<Spread_Line_Item__c> lines = [
-            SELECT Normalized_Line__c, Primary_Evidence__c, Material__c
+            SELECT Normalized_Line__c, Statement_Type__c, Fiscal_Period__c, Primary_Evidence__c, Material__c
             FROM Spread_Line_Item__c
             WHERE Spread_Document__c = :document.Id
             ORDER BY Normalized_Line__c
@@ -68,6 +70,9 @@ private class SpreadCandidateParserServiceTest {
         Assert.areEqual(2, lines.size());
         Assert.areEqual(evidenceResult.evidenceId, lines[0].Primary_Evidence__c);
         Assert.areEqual(true, lines[0].Material__c);
+        Assert.areEqual('income_statement', lines[0].Statement_Type__c);
+        Assert.areEqual('Q3 2025', lines[0].Fiscal_Period__c);
+        Assert.areEqual('FY2025', lines[1].Fiscal_Period__c);
 
         List<Spread_Path_Result__c> pathResults = [
             SELECT Path_Key__c, Candidate_Value__c, Raw_Label__c, Raw_Value__c,

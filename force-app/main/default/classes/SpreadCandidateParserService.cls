@@ -23,6 +23,8 @@ public with sharing class SpreadCandidateParserService {
 
     public class ParserCandidate {
         public String normalized_line;
+        public String statement_type;
+        public String fiscal_period;
         public String raw_label;
         public String raw_value;
         public Decimal normalized_value;
@@ -94,13 +96,19 @@ public with sharing class SpreadCandidateParserService {
             }
             acceptedCandidates.add(candidate);
             Id evidenceId = resolveEvidenceId(candidate.evidence_id);
+            String statementType = String.isBlank(candidate.statement_type)
+                ? (String.isBlank(output.statement_type) ? document.Statement_Type__c : output.statement_type)
+                : candidate.statement_type;
+            String fiscalPeriod = String.isBlank(candidate.fiscal_period)
+                ? (String.isBlank(output.fiscal_period) ? document.Fiscal_Period__c : output.fiscal_period)
+                : candidate.fiscal_period;
             lineItems.add(new Spread_Line_Item__c(
                 Name = candidate.normalized_line,
                 Pilot_Run__c = document.Pilot_Run__c,
                 Spread_Document__c = document.Id,
                 Normalized_Line__c = candidate.normalized_line,
-                Statement_Type__c = String.isBlank(output.statement_type) ? document.Statement_Type__c : output.statement_type,
-                Fiscal_Period__c = String.isBlank(output.fiscal_period) ? document.Fiscal_Period__c : output.fiscal_period,
+                Statement_Type__c = statementType,
+                Fiscal_Period__c = fiscalPeriod,
                 Source_Page__c = candidate.source_page,
                 Source_Coordinates__c = candidate.source_coordinates,
                 Primary_Evidence__c = evidenceId,

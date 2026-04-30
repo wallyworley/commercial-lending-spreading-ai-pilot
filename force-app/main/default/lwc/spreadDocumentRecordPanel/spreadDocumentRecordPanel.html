@@ -1,0 +1,118 @@
+<template>
+    <lightning-card title="Document Review">
+        <lightning-button
+            slot="actions"
+            label="Refresh"
+            onclick={handleRefresh}
+        ></lightning-button>
+
+        <template lwc:if={errorMessage}>
+            <div class="slds-p-horizontal_medium slds-p-top_medium">
+                <div class="slds-notify slds-notify_alert slds-alert_error" role="alert">
+                    <span>{errorMessage}</span>
+                </div>
+            </div>
+        </template>
+
+        <template lwc:elseif={summary}>
+            <div class="slds-p-around_medium">
+                <section class="summary-band slds-m-bottom_medium">
+                    <div class="summary-grid">
+                        <template for:each={summaryFacts} for:item="fact">
+                            <div key={fact.label} class="summary-item">
+                                <p class="summary-label">{fact.label}</p>
+                                <template lwc:if={fact.url}>
+                                    <a href={fact.url}>{fact.value}</a>
+                                </template>
+                                <template lwc:else>
+                                    <p class="summary-value">{fact.value}</p>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+
+                <section class="stat-grid slds-m-bottom_medium">
+                    <template for:each={statBadges} for:item="stat">
+                        <div key={stat.label} class="stat-card">
+                            <p class="summary-label">{stat.label}</p>
+                            <p class="stat-value">{stat.value}</p>
+                        </div>
+                    </template>
+                </section>
+
+                <lightning-tabset>
+                    <lightning-tab label="Evidence">
+                        <div class="tab-body">
+                            <template lwc:if={hasEvidence}>
+                                <lightning-datatable
+                                    key-field="evidenceId"
+                                    data={evidenceRows}
+                                    columns={evidenceColumns}
+                                    hide-checkbox-column
+                                ></lightning-datatable>
+                            </template>
+                            <template lwc:else>
+                                <p class="empty-state">No extraction evidence is attached to this document yet.</p>
+                            </template>
+                        </div>
+                    </lightning-tab>
+
+                    <lightning-tab label="Spread Lines">
+                        <div class="tab-body">
+                            <template lwc:if={hasLineItems}>
+                                <lightning-datatable
+                                    key-field="lineItemId"
+                                    data={lineItemRows}
+                                    columns={lineItemColumns}
+                                    hide-checkbox-column
+                                ></lightning-datatable>
+                            </template>
+                            <template lwc:else>
+                                <p class="empty-state">No spread lines have been parsed for this document yet.</p>
+                            </template>
+                        </div>
+                    </lightning-tab>
+
+                    <lightning-tab label="Path Results">
+                        <div class="tab-body">
+                            <template lwc:if={hasPathResults}>
+                                <lightning-datatable
+                                    key-field="pathResultId"
+                                    data={pathResultRows}
+                                    columns={pathResultColumns}
+                                    hide-checkbox-column
+                                ></lightning-datatable>
+                            </template>
+                            <template lwc:else>
+                                <p class="empty-state">No visible path results are available for this document.</p>
+                            </template>
+                        </div>
+                    </lightning-tab>
+
+                    <lightning-tab label="Exceptions">
+                        <div class="tab-body">
+                            <template lwc:if={hasExceptions}>
+                                <lightning-datatable
+                                    key-field="exceptionId"
+                                    data={exceptionRows}
+                                    columns={exceptionColumns}
+                                    hide-checkbox-column
+                                ></lightning-datatable>
+                            </template>
+                            <template lwc:else>
+                                <p class="empty-state">No exceptions are attached to this document.</p>
+                            </template>
+                        </div>
+                    </lightning-tab>
+                </lightning-tabset>
+            </div>
+        </template>
+
+        <template lwc:else>
+            <div class="slds-p-around_medium">
+                <lightning-spinner alternative-text="Loading document review" size="small"></lightning-spinner>
+            </div>
+        </template>
+    </lightning-card>
+</template>

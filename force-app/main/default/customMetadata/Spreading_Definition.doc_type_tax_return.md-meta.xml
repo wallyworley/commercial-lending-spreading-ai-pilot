@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Tax Return</label>
+    <protected>false</protected>
+    <values><field>Category__c</field><value xsi:type="xsd:string">Source Document Type</value></values>
+    <values><field>Value__c</field><value xsi:type="xsd:string">tax_return</value></values>
+    <values><field>Description__c</field><value xsi:type="xsd:string">Federal tax return (1120, 1120S, 1065, Schedule K-1). IRS-filed; reliable but uses tax accounting, not GAAP. Common for small business C&amp;I credits.</value></values>
+    <values><field>Active__c</field><value xsi:type="xsd:boolean">true</value></values>
+    <values><field>Sort_Order__c</field><value xsi:type="xsd:double">23</value></values>
+</CustomMetadata>

@@ -15,6 +15,13 @@
     padding: var(--slds-g-spacing-3, 0.75rem) var(--slds-g-spacing-4, 1rem);
 }
 
+.loan-context {
+    background: linear-gradient(135deg, #f0f9ff, #f8fafc);
+    border: 1px solid var(--slds-g-color-border-base-1, #dddbda);
+    border-radius: 0.5rem;
+    padding: var(--slds-g-spacing-3, 0.75rem) var(--slds-g-spacing-4, 1rem);
+}
+
 .section-heading {
     margin-bottom: var(--slds-g-spacing-3, 0.75rem);
 }
@@ -38,13 +45,22 @@
     min-width: 100%;
 }
 
+.analyst-spread-grid {
+    min-width: 100%;
+    table-layout: auto;
+}
+
 .col-check {
     width: 2.5rem;
     text-align: center;
 }
 
+.col-document {
+    min-width: 12rem;
+}
+
 .col-line {
-    min-width: 14rem;
+    min-width: 12rem;
 }
 
 .col-period {
@@ -61,9 +77,45 @@
     vertical-align: top;
 }
 
+.col-amount {
+    min-width: 10rem;
+    text-align: right;
+    vertical-align: top;
+}
+
+.col-status {
+    min-width: 7rem;
+    text-align: center;
+}
+
 .col-actions {
     min-width: 9rem;
     white-space: nowrap;
+}
+
+/* ── Analyst Spread View ── */
+
+.analyst-amount {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    gap: var(--slds-g-spacing-1, 0.25rem);
+}
+
+.analyst-amount__value {
+    color: var(--slds-g-color-neutral-base-10, #181818);
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.analyst-amount__meta {
+    color: var(--slds-g-color-neutral-base-50, #706e6b);
+    font-size: var(--slds-g-font-scale-minus-2, 0.75rem);
+}
+
+.analyst-amount--empty .analyst-amount__value,
+.analyst-amount--empty .analyst-amount__meta {
+    color: var(--slds-g-color-neutral-base-60, #747474);
 }
 
 /* ── Path Cell (stacked card within a table cell) ── */

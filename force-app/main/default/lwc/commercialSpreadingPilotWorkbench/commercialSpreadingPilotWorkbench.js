@@ -1,7 +1,9 @@
-import { LightningElement, track } from 'lwc';
+import { api, LightningElement, track } from 'lwc';
 import getPilotRuns from '@salesforce/apex/SpreadWorkbenchController.getPilotRuns';
+import getOrCreatePilotRunForLoan from '@salesforce/apex/SpreadWorkbenchController.getOrCreatePilotRunForLoan';
 import getMaterialErrors from '@salesforce/apex/SpreadWorkbenchController.getMaterialErrors';
 import getSpreadReviewPage from '@salesforce/apex/SpreadWorkbenchController.getSpreadReviewPage';
+import getActivePolicyThresholds from '@salesforce/apex/SpreadWorkbenchController.getActivePolicyThresholds';
 import getRunSummary from '@salesforce/apex/SpreadScorecardService.getRunSummary';
 import calculateForRun from '@salesforce/apex/SpreadScorecardService.calculateForRun';
 import certifyPathResults from '@salesforce/apex/SpreadCertificationService.certifyPathResults';
@@ -26,7 +28,7 @@ const SCORECARD_COLUMNS = [
 const ERROR_COLUMNS = [
     { label: 'Borrower', fieldName: 'borrowerName' },
     { label: 'Document', fieldName: 'documentName' },
-    { label: 'Path', fieldName: 'pathKey' },
+    { label: 'Path', fieldName: 'pathLabel' },
     { label: 'Spread Line', fieldName: 'normalizedLine' },
     { label: 'Manual', fieldName: 'manualValue', type: 'currency' },
     { label: 'Candidate', fieldName: 'candidateValue', type: 'currency' },
@@ -40,9 +42,16 @@ const PATH_LABELS = {
     salesforce_native_staging: 'Salesforce Native Staging'
 };
 
+const HIDDEN_UI_PATH_KEYS = new Set([
+    'manual_ncino_control',
+    'ncino_automated_spreading'
+]);
+
 const PAGE_SIZE = 25;
 
 export default class CommercialSpreadingPilotWorkbench extends LightningElement {
+    @api recordId;
+    @api objectApiName;
     scorecardColumns = SCORECARD_COLUMNS;
     errorColumns = ERROR_COLUMNS;
     runOptions = [];
@@ -78,8 +87,12 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
     isUploadingDocs = false;
     _pollingInterval = null;
 
+    @track thresholds = [];
+    activePolicy = null;
+    isLoadingPolicy = false;
+
     connectedCallback() {
-        this.loadRuns();
+        this.initializeContext();
     }
 
     disconnectedCallback() {
@@ -97,6 +110,23 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
 
     get hasRuns() {
         return this.runOptions.length > 0;
+    }
+
+    get isLoanContext() {
+        return this.objectApiName === 'Commercial_Loan__c' && !!this.recordId;
+    }
+
+    get showPilotRunPicker() {
+        return !this.isLoanContext;
+    }
+
+    get workbenchContextLabel() {
+        if (this.isLoanContext) {
+            return this.selectedRun?.commercialLoanName
+                ? `Loan cockpit for ${this.selectedRun.commercialLoanName}`
+                : 'Loan cockpit';
+        }
+        return 'Pilot run workspace';
     }
 
     get hasScorecards() {
@@ -152,6 +182,59 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         }));
     }
 
+    get periodColumns() {
+        const periods = [...new Set(this.reviewRows.map((row) => row.fiscalPeriod).filter((period) => period && period !== '—'))];
+        return periods.sort((left, right) => this.comparePeriods(right, left));
+    }
+
+    get analystRowsWithSelection() {
+        const periodColumns = this.periodColumns;
+        const grouped = new Map();
+
+        this.reviewRows.forEach((row) => {
+            const key = [
+                row.spreadDocumentId || 'none',
+                row.normalizedLine || 'Unmapped',
+                row.material ? 'material' : 'nonmaterial'
+            ].join('|');
+
+            if (!grouped.has(key)) {
+                grouped.set(key, {
+                    key,
+                    documentName: row.documentName,
+                    documentUrl: row.documentUrl,
+                    normalizedLine: row.normalizedLine,
+                    displayLine: this.formatStoredValue(row.normalizedLine),
+                    material: row.material,
+                    sourceLineIds: [],
+                    sourceRowsByPeriod: {}
+                });
+            }
+
+            const group = grouped.get(key);
+            group.sourceLineIds.push(row.lineItemId);
+            group.sourceRowsByPeriod[row.fiscalPeriod] = row;
+        });
+
+        return [...grouped.values()].map((group) => {
+            const periodCells = periodColumns.map((period) => this.buildAnalystPeriodCell(group.sourceRowsByPeriod[period], period));
+            const resultIds = periodCells.map((cell) => cell.pathResultId).filter(Boolean);
+            const evidenceUrls = [...new Set(periodCells.map((cell) => cell.evidenceUrl).filter(Boolean))];
+            const statuses = periodCells.map((cell) => cell.certificationStatus).filter((status) => status && status !== '—');
+
+            return {
+                ...group,
+                isSelected: group.sourceLineIds.every((id) => !!this.selectedLineIds[id]),
+                periodCells,
+                resultIds,
+                evidenceUrls,
+                statusLabel: this.summarizeStatuses(statuses),
+                statusClass: this.certStatusClass(this.summarizeStatuses(statuses)),
+                evidenceLabel: evidenceUrls.length > 1 ? `${evidenceUrls.length} evidence links` : 'View Evidence'
+            };
+        });
+    }
+
     get pageLabel() {
         if (this.reviewTotalCount === 0) {
             return '0 results';
@@ -167,6 +250,30 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
 
     get isNextDisabled() {
         return this.reviewOffset + PAGE_SIZE >= this.reviewTotalCount || this.isLoadingReview;
+    }
+
+    async initializeContext() {
+        if (this.isLoanContext) {
+            await this.loadLoanContext();
+        } else {
+            await this.loadRuns();
+        }
+    }
+
+    async loadLoanContext() {
+        this.isLoading = true;
+        this.clearMessages();
+        try {
+            const run = await getOrCreatePilotRunForLoan({ commercialLoanId: this.recordId });
+            this.selectedRunId = run.id;
+            this.selectedRun = run;
+            this.runOptions = [{ label: run.label, value: run.id, detail: run }];
+            await this.loadSelectedRunData();
+        } catch (error) {
+            this.handleError(error, 'Unable to initialize loan spreading cockpit.');
+        } finally {
+            this.isLoading = false;
+        }
     }
 
     async loadRuns() {
@@ -203,7 +310,7 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
     }
 
     async handleRefresh() {
-        await this.loadRuns();
+        await this.initializeContext();
         if (this.activeTab === 'review') {
             this.resetReviewState();
             await this.loadReviewPage();
@@ -265,6 +372,21 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         this.selectedLineIds = updated;
     }
 
+    handleAnalystRowSelect(event) {
+        const rowKey = event.target.dataset.rowKey;
+        const checked = event.target.checked;
+        const row = this.analystRowsWithSelection.find((item) => item.key === rowKey);
+        if (!row) {
+            return;
+        }
+
+        const updated = { ...this.selectedLineIds };
+        row.sourceLineIds.forEach((lineId) => {
+            updated[lineId] = checked;
+        });
+        this.selectedLineIds = updated;
+    }
+
     handleRowCertify(event) {
         const lineId = event.currentTarget.dataset.lineId;
         const row = this.reviewRows.find((r) => r.lineItemId === lineId);
@@ -277,6 +399,18 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         const row = this.reviewRows.find((r) => r.lineItemId === lineId);
         const ids = row ? row.pathCells.map((c) => c.pathResultId).filter(Boolean) : [];
         this.openDialog('reject', ids, row ? [row.normalizedLine] : []);
+    }
+
+    handleAnalystRowCertify(event) {
+        const rowKey = event.currentTarget.dataset.rowKey;
+        const row = this.analystRowsWithSelection.find((item) => item.key === rowKey);
+        this.openDialog('certify', row ? row.resultIds : [], row ? [row.displayLine] : []);
+    }
+
+    handleAnalystRowReject(event) {
+        const rowKey = event.currentTarget.dataset.rowKey;
+        const row = this.analystRowsWithSelection.find((item) => item.key === rowKey);
+        this.openDialog('reject', row ? row.resultIds : [], row ? [row.displayLine] : []);
     }
 
     handleBulkCertify() {
@@ -386,8 +520,9 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
                 spreadDocumentId: this.selectedReviewDocumentId || null
             });
             this.reviewTotalCount = result.totalCount;
-            this.pathColumns = result.pathKeys.map((k) => PATH_LABELS[k] || k);
-            this.reviewRows = this.buildReviewRows(result.lines, result.pathKeys);
+            const visiblePathKeys = result.pathKeys.filter((key) => this.shouldDisplayPath(key));
+            this.pathColumns = visiblePathKeys.map((k) => PATH_LABELS[k] || k);
+            this.reviewRows = this.buildReviewRows(result.lines, visiblePathKeys);
         } catch (error) {
             this.handleError(error, 'Unable to load spread review page.');
         } finally {
@@ -405,18 +540,24 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
             const pathCells = pathKeys.map((key) => {
                 const pr = resultByPath[key];
                 if (!pr) {
-                    return { pathKey: key, pathResultId: null, manualFormatted: '—', candidateFormatted: '—', varianceFormatted: '—', varianceClass: 'path-cell__value', certificationStatus: '—', statusClass: 'cert-status--none' };
+                    return { pathKey: key, pathResultId: null, manualFormatted: '—', candidateFormatted: '—', varianceFormatted: '—', varianceClass: 'path-cell__value', certificationStatus: '—', statusClass: 'cert-status--none', hasManualBaseline: false };
                 }
+                const hasManualBaseline = pr.manualValue !== null && pr.manualValue !== undefined;
                 const variance = pr.varianceAmount ?? 0;
                 return {
                     pathKey: key,
                     pathResultId: pr.pathResultId,
                     manualFormatted: this.formatCurrency(pr.manualValue),
                     candidateFormatted: this.formatCurrency(pr.candidateValue),
-                    varianceFormatted: this.formatCurrency(variance),
-                    varianceClass: variance > 0 ? 'path-cell__value variance--positive' : variance < 0 ? 'path-cell__value variance--negative' : 'path-cell__value',
-                    certificationStatus: pr.certificationStatus || 'Pending',
-                    statusClass: this.certStatusClass(pr.certificationStatus)
+                    varianceFormatted: hasManualBaseline ? this.formatCurrency(variance) : '—',
+                    varianceClass: hasManualBaseline
+                        ? (variance > 0 ? 'path-cell__value variance--positive' : variance < 0 ? 'path-cell__value variance--negative' : 'path-cell__value')
+                        : 'path-cell__value',
+                    certificationStatus: pr.certificationStatus || (hasManualBaseline ? 'Pending' : 'Baseline Needed'),
+                    statusClass: this.certStatusClass(pr.certificationStatus),
+                    hasManualBaseline,
+                    evidenceId: pr.primaryEvidenceId,
+                    evidenceUrl: pr.primaryEvidenceId ? `/${pr.primaryEvidenceId}` : null
                 };
             });
 
@@ -424,12 +565,47 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
                 lineItemId: line.lineItemId,
                 documentName: line.documentName || 'Unassigned',
                 spreadDocumentId: line.spreadDocumentId,
+                documentUrl: line.spreadDocumentId ? `/${line.spreadDocumentId}` : null,
                 normalizedLine: line.normalizedLine || 'Unmapped',
+                displayLine: this.formatStoredValue(line.normalizedLine || 'Unmapped'),
                 fiscalPeriod: line.fiscalPeriod || '—',
                 material: line.material,
                 pathCells
             };
         });
+    }
+
+    buildAnalystPeriodCell(row, period) {
+        if (!row) {
+            return {
+                period,
+                key: period,
+                amountFormatted: '—',
+                detailLabel: 'No extracted value',
+                certificationStatus: '—',
+                statusClass: 'cert-status--none',
+                cellClass: 'analyst-amount analyst-amount--empty',
+                pathResultId: null,
+                evidenceUrl: null
+            };
+        }
+
+        const cell = row.pathCells.find((pathCell) => pathCell.pathResultId) || row.pathCells[0];
+        const hasManualBaseline = !!cell?.hasManualBaseline;
+        const amountFormatted = hasManualBaseline ? cell.manualFormatted : cell?.candidateFormatted;
+        const detailLabel = hasManualBaseline ? `Adjusted from ${cell?.candidateFormatted}` : 'Extracted';
+
+        return {
+            period,
+            key: `${row.lineItemId}-${period}`,
+            amountFormatted: amountFormatted || '—',
+            detailLabel,
+            certificationStatus: cell?.certificationStatus || '—',
+            statusClass: cell?.statusClass || 'cert-status--none',
+            cellClass: cell?.pathResultId ? 'analyst-amount' : 'analyst-amount analyst-amount--empty',
+            pathResultId: cell?.pathResultId,
+            evidenceUrl: cell?.evidenceUrl
+        };
     }
 
     getSelectedPathResultIds() {
@@ -466,24 +642,29 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
     }
 
     formatScorecards(summaries) {
-        return summaries.map((summary) => ({
-            ...summary,
-            pathLabel: PATH_LABELS[summary.pathKey] || summary.pathKey,
-            decisionLabel: summary.passed ? 'Pass' : 'Block',
-            exactMatchLabel: this.formatPercent(summary.exactMatchRate),
-            dollarAccuracyLabel: this.formatPercent(summary.dollarWeightedAccuracy),
-            timeReductionLabel: this.formatPercent(summary.timeReduction),
-            certificationRateLabel: this.formatPercent(summary.certificationRate)
-        }));
+        return summaries
+            .filter((summary) => this.shouldDisplayPath(summary.pathKey))
+            .map((summary) => ({
+                ...summary,
+                pathLabel: PATH_LABELS[summary.pathKey] || summary.pathKey,
+                decisionLabel: summary.passed ? 'Pass' : 'Block',
+                exactMatchLabel: this.formatPercent(summary.exactMatchRate),
+                dollarAccuracyLabel: this.formatPercent(summary.dollarWeightedAccuracy),
+                timeReductionLabel: this.formatPercent(summary.timeReduction),
+                certificationRateLabel: this.formatPercent(summary.certificationRate)
+            }));
     }
 
     formatMaterialErrors(errors) {
-        return errors.map((error) => ({
-            ...error,
-            borrowerName: error.borrowerName || 'Unassigned',
-            documentName: error.documentName || 'Unassigned',
-            normalizedLine: error.normalizedLine || 'Unmapped'
-        }));
+        return errors
+            .filter((error) => this.shouldDisplayPath(error.pathKey))
+            .map((error) => ({
+                ...error,
+                pathLabel: PATH_LABELS[error.pathKey] || this.formatStoredValue(error.pathKey),
+                borrowerName: error.borrowerName || 'Unassigned',
+                documentName: error.documentName || 'Unassigned',
+                normalizedLine: error.normalizedLine || 'Unmapped'
+            }));
     }
 
     formatPercent(value) {
@@ -513,6 +694,33 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         return map[status] || 'cert-status--none';
     }
 
+    summarizeStatuses(statuses) {
+        if (!statuses.length) {
+            return 'Uncertified';
+        }
+        const uniqueStatuses = [...new Set(statuses)];
+        if (uniqueStatuses.length === 1) {
+            return uniqueStatuses[0];
+        }
+        if (uniqueStatuses.includes('Rejected')) {
+            return 'Needs Review';
+        }
+        return 'Mixed';
+    }
+
+    comparePeriods(left, right) {
+        const leftTime = Date.parse(left);
+        const rightTime = Date.parse(right);
+        if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime)) {
+            return leftTime - rightTime;
+        }
+        return String(left).localeCompare(String(right));
+    }
+
+    shouldDisplayPath(pathKey) {
+        return !HIDDEN_UI_PATH_KEYS.has(pathKey);
+    }
+
     clearMessages() {
         this.message = undefined;
         this.errorMessage = undefined;
@@ -521,6 +729,10 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
     handleError(error, fallback) {
         this.errorMessage = error?.body?.message || error?.message || fallback;
         this.message = undefined;
+    }
+
+    get hasThresholds() {
+        return this.thresholds.length > 0;
     }
 
     get hasDocuments() {
@@ -548,6 +760,38 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         if (tab === 'corpus' && this.selectedRunId) {
             await this.loadDocuments();
         }
+        if (tab === 'policy') {
+            await this.loadThresholds();
+        }
+    }
+
+    async loadThresholds() {
+        const portfolio = this.selectedRun?.portfolio || 'C&I';
+        this.isLoadingPolicy = true;
+        this.clearMessages();
+        try {
+            const result = await getActivePolicyThresholds({ portfolio });
+            this.activePolicy = result;
+            this.thresholds = (result?.thresholds || []).map((t) => ({
+                ...t,
+                severityClass: this.severityBadgeClass(t.severity),
+                materialLabel: t.appliesToMaterialLine ? 'Yes' : 'No',
+                exceptionLabel: t.requiresExceptionApproval ? 'Yes' : 'No'
+            }));
+        } catch (error) {
+            this.handleError(error, 'Unable to load policy thresholds.');
+            this.thresholds = [];
+            this.activePolicy = null;
+        } finally {
+            this.isLoadingPolicy = false;
+        }
+    }
+
+    severityBadgeClass(severity) {
+        if (severity === 'Hard Stop') return 'slds-badge slds-badge_error';
+        if (severity === 'Policy Exception') return 'slds-badge slds-badge_warning';
+        if (severity === 'Warning') return 'slds-badge';
+        return 'slds-badge';
     }
 
     async handleUploadFinished(event) {
@@ -721,16 +965,30 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         return status === 'Complete' || status === 'Failed' || status === 'Needs Review';
     }
 
+    formatStoredValue(value) {
+        if (!value) {
+            return '—';
+        }
+
+        return String(value)
+            .replace(/[_-]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
     decorateDocument(doc) {
         const extractionStatus = doc.extractionStatus || 'Not Started';
         const parsingStatus = doc.parsingStatus || 'Not Started';
+        const parsingDisplayStatus = parsingStatus === 'Needs Review' ? 'Complete' : parsingStatus;
         const evidenceCount = doc.evidenceCount || 0;
         const canRetryExtraction = extractionStatus === 'Failed';
         const canParse =
             extractionStatus === 'Complete' &&
             evidenceCount > 0 &&
             parsingStatus !== 'Complete' &&
-            parsingStatus !== 'In Progress';
+            parsingStatus !== 'In Progress' &&
+            parsingStatus !== 'Needs Review';
         let parseAvailabilityReason = 'Ready to parse';
 
         if (!canParse) {
@@ -746,6 +1004,8 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
                 parseAvailabilityReason = 'Already parsed';
             } else if (parsingStatus === 'In Progress') {
                 parseAvailabilityReason = 'Parsing in progress';
+            } else if (parsingStatus === 'Needs Review') {
+                parseAvailabilityReason = 'Parsed. Review required.';
             } else {
                 parseAvailabilityReason = 'Review document status';
             }
@@ -753,11 +1013,17 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
 
         return {
             ...doc,
+            recordUrl: doc.id ? `/${doc.id}` : null,
+            documentType: this.formatStoredValue(doc.documentType),
+            statementType: this.formatStoredValue(doc.statementType),
+            documentStore: this.formatStoredValue(doc.documentStore),
+            scenarioType: this.formatStoredValue(doc.scenarioType),
             extractionStatus,
             parsingStatus,
+            parsingDisplayStatus,
             evidenceCount,
             extractionStatusClass: this.statusClass(extractionStatus),
-            parsingStatusClass: this.statusClass(parsingStatus),
+            parsingStatusClass: this.statusClass(parsingDisplayStatus),
             canRetryExtraction,
             canParse,
             parseAvailabilityReason

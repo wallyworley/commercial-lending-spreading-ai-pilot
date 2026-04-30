@@ -1,9 +1,17 @@
 public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
     private Id spreadDocumentId;
+    private Integer attemptNumber;
     private static final String DOCLING_SERVICE = 'Spread_Docling_Service_V2';
+    @TestVisible private static final Integer MAX_TRANSIENT_ATTEMPTS = 3;
 
     public ExtractionQueueable(Id spreadDocumentId) {
         this.spreadDocumentId = spreadDocumentId;
+        this.attemptNumber = 1;
+    }
+
+    public ExtractionQueueable(Id spreadDocumentId, Integer attemptNumber) {
+        this.spreadDocumentId = spreadDocumentId;
+        this.attemptNumber = attemptNumber == null || attemptNumber < 1 ? 1 : attemptNumber;
     }
 
     public void execute(QueueableContext ctx) {
@@ -25,13 +33,19 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
             // Extract evidence only. Parsing into draft spread candidates is handled
             // by SpreadCandidateParserService after evidence is stored.
             DoclingResponse doclingResp = callDoclingService(version);
-            if (doclingResp == null || doclingResp.tables == null) {
+            if (doclingResp == null || hasNoExtractedTables(doclingResp.tables)) {
+                String errorMessage = String.isBlank(doclingResp == null ? null : doclingResp.errorMessage)
+                    ? 'Docling extraction failed'
+                    : doclingResp.errorMessage;
+                if (isRetryable(doclingResp) && attemptNumber < MAX_TRANSIENT_ATTEMPTS) {
+                    retryLater(doc.Id);
+                    return;
+                }
+
                 updateDocumentStatus(
                     doc.Id,
                     'Failed',
-                    String.isBlank(doclingResp == null ? null : doclingResp.errorMessage)
-                        ? 'Docling extraction failed'
-                        : doclingResp.errorMessage
+                    errorMessage
                 );
                 return;
             }
@@ -47,11 +61,18 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
             if (!String.isBlank(evidenceResult.errorMessage)) {
                 updateDocumentStatus(doc.Id, 'Needs Review', evidenceResult.errorMessage);
             } else {
-                System.enqueueJob(new ParsingQueueable(doc.Id));
+                enqueueParsing(doc.Id);
             }
         } catch (Exception e) {
             updateDocumentStatus(spreadDocumentId, 'Failed', e.getMessage());
         }
+    }
+
+    private void enqueueParsing(Id docId) {
+        if (Test.isRunningTest()) {
+            return;
+        }
+        System.enqueueJob(new ParsingQueueable(docId));
     }
 
     private DoclingResponse callDoclingService(ContentVersion version) {
@@ -73,10 +94,11 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
             HttpResponse res = http.send(req);
 
             DoclingResponse resp = new DoclingResponse();
+            resp.statusCode = res.getStatusCode();
             if (res.getStatusCode() == 200) {
                 Map<String, Object> responseMap = (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
                 resp.tables = (String) responseMap.get('tables');
-                resp.pageCount = (Integer) responseMap.get('page_count');
+                resp.pageCount = getIntegerValue(responseMap.get('page_count'));
                 resp.jobId = (String) responseMap.get('job_id');
                 resp.engine = (String) responseMap.get('engine');
             } else {
@@ -89,6 +111,28 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
             resp.errorMessage = e.getMessage();
             return resp;
         }
+    }
+
+    private Boolean isRetryable(DoclingResponse response) {
+        if (response == null) {
+            return true;
+        }
+        String message = String.isBlank(response.errorMessage) ? '' : response.errorMessage.toLowerCase();
+        return response.statusCode == 502
+            || response.statusCode == 503
+            || response.statusCode == 504
+            || message.contains('application loading')
+            || message.contains('premature end of chunk')
+            || message.contains('read timed out')
+            || message.contains('timeout');
+    }
+
+    private void retryLater(Id docId) {
+        update new Spread_Document__c(
+            Id = docId,
+            Extraction_Status__c = 'Pending'
+        );
+        System.enqueueJob(new ExtractionQueueable(docId, attemptNumber + 1));
     }
 
     private void updateDocumentStatus(Id docId, String status, String reason) {
@@ -122,6 +166,29 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
             LIMIT 1
         ];
         return versions.isEmpty() ? null : versions[0];
+    }
+
+    private Boolean hasNoExtractedTables(String tables) {
+        if (String.isBlank(tables)) {
+            return true;
+        }
+        return tables.trim() == '[]';
+    }
+
+    private Integer getIntegerValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Integer) {
+            return (Integer) value;
+        }
+        if (value instanceof Long) {
+            return Integer.valueOf((Long) value);
+        }
+        if (value instanceof Decimal) {
+            return ((Decimal) value).intValue();
+        }
+        return Integer.valueOf(String.valueOf(value));
     }
 
     private String buildMultipartBody(String boundary, String fileName, String fileContentType, Blob fileData) {
@@ -162,5 +229,6 @@ public class ExtractionQueueable implements Queueable, Database.AllowsCallouts {
         public String jobId;
         public String engine;
         public String errorMessage;
+        public Integer statusCode;
     }
 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Assigned_Underwriter__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>Assigned Underwriter</label>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Assigned Underwriter Commercial Loans</relationshipLabel>
+    <relationshipName>Assigned_UW_Commercial_Loans</relationshipName>
+    <type>Lookup</type>
+</CustomField>

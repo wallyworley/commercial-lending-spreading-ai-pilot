@@ -39,6 +39,7 @@ public with sharing class SpreadDocumentService {
         try {
             Set<Id> requestedContentDocumentIds = toIdSet(contentDocumentIds);
             Map<Id, ContentVersion> versionsByDocId = queryContentVersions(contentDocumentIds);
+            Spread_Pilot_Run__c runContext = getRunContext(pilotRunId);
             Map<Id, Spread_Document__c> existingDocsByContentDocumentId = getExistingDocumentsByContentDocumentId(
                 pilotRunId,
                 requestedContentDocumentIds
@@ -69,10 +70,13 @@ public with sharing class SpreadDocumentService {
                 Spread_Document__c doc = new Spread_Document__c(
                     Name = documentName,
                     Pilot_Run__c = pilotRunId,
+                    Commercial_Loan__c = runContext.Commercial_Loan__c,
+                    Borrower__c = runContext.Commercial_Loan__r == null ? null : runContext.Commercial_Loan__r.Borrower__c,
                     ContentDocumentId__c = contentDocId,
                     Document_Type__c = 'uploaded_document',
                     Document_Store__c = 'salesforce_files',
                     Source_System__c = 'Analyst Upload',
+                    Loan_Or_Opportunity__c = runContext.Commercial_Loan__r == null ? null : runContext.Commercial_Loan__r.Name,
                     Extraction_Status__c = 'Pending',
                     Contains_Confidential_Data__c = false
                 );
@@ -206,7 +210,9 @@ public with sharing class SpreadDocumentService {
                 summary.skippedCount++;
                 continue;
             }
-            if (document.Parsing_Status__c == 'Complete' || document.Parsing_Status__c == 'In Progress') {
+            if (document.Parsing_Status__c == 'Complete'
+                || document.Parsing_Status__c == 'In Progress'
+                || document.Parsing_Status__c == 'Needs Review') {
                 summary.skippedCount++;
                 continue;
             }
@@ -229,6 +235,20 @@ public with sharing class SpreadDocumentService {
         }
 
         return summary;
+    }
+
+    private static Spread_Pilot_Run__c getRunContext(Id pilotRunId) {
+        List<Spread_Pilot_Run__c> runs = [
+            SELECT Id, Commercial_Loan__c, Commercial_Loan__r.Name, Commercial_Loan__r.Borrower__c
+            FROM Spread_Pilot_Run__c
+            WHERE Id = :pilotRunId
+            WITH USER_MODE
+            LIMIT 1
+        ];
+        if (runs.isEmpty()) {
+            throw new AuraHandledException('Pilot run was not found.');
+        }
+        return runs[0];
     }
 
     private static Map<Id, ContentVersion> queryContentVersions(List<String> contentDocumentIds) {

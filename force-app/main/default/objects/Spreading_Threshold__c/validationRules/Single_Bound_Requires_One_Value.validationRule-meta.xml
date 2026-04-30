@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Single_Bound_Requires_One_Value</fullName>
+    <active>true</active>
+    <description>For single-bound operators, the relevant bound value is required: Minimum Value for lower-bound operators, Maximum Value for upper-bound operators.</description>
+    <errorConditionFormula>(ISPICKVAL(Operator__c, '&gt;=') || ISPICKVAL(Operator__c, '&gt;')) &amp;&amp; ISNULL(Minimum_Value__c)
+||
+(ISPICKVAL(Operator__c, '&lt;=') || ISPICKVAL(Operator__c, '&lt;')) &amp;&amp; ISNULL(Maximum_Value__c)</errorConditionFormula>
+    <errorDisplayField>Operator__c</errorDisplayField>
+    <errorMessage>Minimum Value is required for lower-bound operators. Maximum Value is required for upper-bound operators.</errorMessage>
+</ValidationRule>

@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Document_Store__c</fullName>
+    <description>Physical document storage location. Salesforce Files (ContentDocument) for Path 2 native extraction; nCino Document Manager (AccountDocument) for Path 1 nCino Automated Spreading.</description>
+    <inlineHelpText>Select where the source file is stored. Use &quot;nCino Document Manager&quot; for documents uploaded via nCino (Path 1). Use &quot;Salesforce Files&quot; for documents processed through Salesforce-native extraction (Path 2).</inlineHelpText>
     <label>Document Store</label>
     <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
     <type>Picklist</type>
     <valueSet>
         <restricted>true</restricted>
@@ -20,6 +24,4 @@
             </value>
         </valueSetDefinition>
     </valueSet>
-    <description>Physical document storage location. Salesforce Files (ContentDocument) for Path 2 native extraction; nCino Document Manager (AccountDocument) for Path 1 nCino Automated Spreading.</description>
-    <inlineHelpText>Select where the source file is stored. Use "nCino Document Manager" for documents uploaded via nCino (Path 1). Use "Salesforce Files" for documents processed through Salesforce-native extraction (Path 2).</inlineHelpText>
 </CustomField>

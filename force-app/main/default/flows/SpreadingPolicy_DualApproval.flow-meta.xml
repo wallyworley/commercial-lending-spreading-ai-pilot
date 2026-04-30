@@ -1,0 +1,533 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <description>Screen Flow on Spreading_Policy__c: guides a credit admin through the four-step dual-approval lifecycle — Submit for Approval, First Approval, Second Approval, Activate. Delegates each transition to SpreadingPolicyFlowAction. Runs as the running user (DefaultMode) so sharing rules and FLS are enforced.</description>
+    <interviewLabel>Spreading Policy Dual Approval {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Spreading Policy Dual Approval</label>
+    <processType>Flow</processType>
+    <runInMode>DefaultMode</runInMode>
+    <status>Active</status>
+
+    <!-- ─── actionCalls (ALL grouped) ────────────────────────────────── -->
+
+    <actionCalls>
+        <name>actionActivatePolicy</name>
+        <label>Execute Activate Policy</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <actionName>SpreadingPolicyFlowAction</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>decisionActivateResult</targetReference>
+        </connector>
+        <faultConnector>
+            <targetReference>assignCaptureFaultMessage</targetReference>
+        </faultConnector>
+        <inputParameters>
+            <name>policyId</name>
+            <value><elementReference>inp_RecordId</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>action</name>
+            <value><stringValue>ACTIVATE_POLICY</stringValue></value>
+        </inputParameters>
+        <outputParameters>
+            <assignToReference>var_ActionSuccess</assignToReference>
+            <name>success</name>
+        </outputParameters>
+        <outputParameters>
+            <assignToReference>var_ErrorMessage</assignToReference>
+            <name>errorMessage</name>
+        </outputParameters>
+    </actionCalls>
+
+    <actionCalls>
+        <name>actionFirstApproval</name>
+        <label>Execute First Approval</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <actionName>SpreadingPolicyFlowAction</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>decisionFirstApprovalResult</targetReference>
+        </connector>
+        <faultConnector>
+            <targetReference>assignCaptureFaultMessage</targetReference>
+        </faultConnector>
+        <inputParameters>
+            <name>policyId</name>
+            <value><elementReference>inp_RecordId</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>action</name>
+            <value><stringValue>RECORD_FIRST_APPROVAL</stringValue></value>
+        </inputParameters>
+        <inputParameters>
+            <name>approverId</name>
+            <value><elementReference>$User.Id</elementReference></value>
+        </inputParameters>
+        <outputParameters>
+            <assignToReference>var_ActionSuccess</assignToReference>
+            <name>success</name>
+        </outputParameters>
+        <outputParameters>
+            <assignToReference>var_ErrorMessage</assignToReference>
+            <name>errorMessage</name>
+        </outputParameters>
+    </actionCalls>
+
+    <actionCalls>
+        <name>actionSecondApproval</name>
+        <label>Execute Second Approval</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <actionName>SpreadingPolicyFlowAction</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>decisionSecondApprovalResult</targetReference>
+        </connector>
+        <faultConnector>
+            <targetReference>assignCaptureFaultMessage</targetReference>
+        </faultConnector>
+        <inputParameters>
+            <name>policyId</name>
+            <value><elementReference>inp_RecordId</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>action</name>
+            <value><stringValue>RECORD_SECOND_APPROVAL</stringValue></value>
+        </inputParameters>
+        <inputParameters>
+            <name>approverId</name>
+            <value><elementReference>$User.Id</elementReference></value>
+        </inputParameters>
+        <outputParameters>
+            <assignToReference>var_ActionSuccess</assignToReference>
+            <name>success</name>
+        </outputParameters>
+        <outputParameters>
+            <assignToReference>var_ErrorMessage</assignToReference>
+            <name>errorMessage</name>
+        </outputParameters>
+    </actionCalls>
+
+    <actionCalls>
+        <name>actionSubmitForApproval</name>
+        <label>Execute Submit for Approval</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <actionName>SpreadingPolicyFlowAction</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>decisionSubmitResult</targetReference>
+        </connector>
+        <faultConnector>
+            <targetReference>assignCaptureFaultMessage</targetReference>
+        </faultConnector>
+        <inputParameters>
+            <name>policyId</name>
+            <value><elementReference>inp_RecordId</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>action</name>
+            <value><stringValue>SUBMIT_FOR_APPROVAL</stringValue></value>
+        </inputParameters>
+        <outputParameters>
+            <assignToReference>var_ActionSuccess</assignToReference>
+            <name>success</name>
+        </outputParameters>
+        <outputParameters>
+            <assignToReference>var_ErrorMessage</assignToReference>
+            <name>errorMessage</name>
+        </outputParameters>
+    </actionCalls>
+
+    <!-- ─── assignments (ALL grouped) ────────────────────────────────── -->
+
+    <assignments>
+        <name>assignCaptureFaultMessage</name>
+        <label>Capture Fault Message</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <assignmentItems>
+            <assignToReference>var_ErrorMessage</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>$Flow.FaultMessage</elementReference></value>
+        </assignmentItems>
+        <connector>
+            <targetReference>screenUnexpectedError</targetReference>
+        </connector>
+    </assignments>
+
+    <!-- ─── decisions (ALL grouped) ──────────────────────────────────── -->
+
+    <decisions>
+        <name>decisionActivateResult</name>
+        <label>Activation Succeeded?</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <defaultConnector><targetReference>screenActionFailed</targetReference></defaultConnector>
+        <defaultConnectorLabel>Failed</defaultConnectorLabel>
+        <rules>
+            <name>activationSucceeded</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>var_ActionSuccess</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><booleanValue>true</booleanValue></rightValue>
+            </conditions>
+            <connector><targetReference>screenActionComplete</targetReference></connector>
+            <label>Succeeded</label>
+        </rules>
+    </decisions>
+
+    <decisions>
+        <name>decisionFirstApprovalResult</name>
+        <label>First Approval Succeeded?</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <defaultConnector><targetReference>screenActionFailed</targetReference></defaultConnector>
+        <defaultConnectorLabel>Failed</defaultConnectorLabel>
+        <rules>
+            <name>firstApprovalSucceeded</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>var_ActionSuccess</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><booleanValue>true</booleanValue></rightValue>
+            </conditions>
+            <connector><targetReference>screenActionComplete</targetReference></connector>
+            <label>Succeeded</label>
+        </rules>
+    </decisions>
+
+    <decisions>
+        <name>decisionSecondApprovalResult</name>
+        <label>Second Approval Succeeded?</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <defaultConnector><targetReference>screenActionFailed</targetReference></defaultConnector>
+        <defaultConnectorLabel>Failed</defaultConnectorLabel>
+        <rules>
+            <name>secondApprovalSucceeded</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>var_ActionSuccess</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><booleanValue>true</booleanValue></rightValue>
+            </conditions>
+            <connector><targetReference>screenActionComplete</targetReference></connector>
+            <label>Succeeded</label>
+        </rules>
+    </decisions>
+
+    <decisions>
+        <name>decisionSubmitResult</name>
+        <label>Submit Succeeded?</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <defaultConnector><targetReference>screenActionFailed</targetReference></defaultConnector>
+        <defaultConnectorLabel>Failed</defaultConnectorLabel>
+        <rules>
+            <name>submitSucceeded</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>var_ActionSuccess</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><booleanValue>true</booleanValue></rightValue>
+            </conditions>
+            <connector><targetReference>screenActionComplete</targetReference></connector>
+            <label>Succeeded</label>
+        </rules>
+    </decisions>
+
+    <decisions>
+        <name>routeByPolicyStatus</name>
+        <label>Route by Policy Status</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <defaultConnector><targetReference>screenInvalidState</targetReference></defaultConnector>
+        <defaultConnectorLabel>Terminal or Unknown Status</defaultConnectorLabel>
+        <rules>
+            <name>statusIsDraft</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>var_PolicyRecord.Status__c</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>Draft</stringValue></rightValue>
+            </conditions>
+            <connector><targetReference>screenSubmitForApproval</targetReference></connector>
+            <label>Draft — Submit for Approval</label>
+        </rules>
+        <rules>
+            <name>statusIsPendingApproval</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>var_PolicyRecord.Status__c</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>Pending Approval</stringValue></rightValue>
+            </conditions>
+            <connector><targetReference>screenFirstApproval</targetReference></connector>
+            <label>Pending Approval — First Approval</label>
+        </rules>
+        <rules>
+            <name>statusIsPendingSecondApproval</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>var_PolicyRecord.Status__c</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>Pending Second Approval</stringValue></rightValue>
+            </conditions>
+            <connector><targetReference>screenSecondApproval</targetReference></connector>
+            <label>Pending Second Approval — Second Approval</label>
+        </rules>
+        <rules>
+            <name>statusIsDualApproved</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>var_PolicyRecord.Status__c</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>Dual Approved</stringValue></rightValue>
+            </conditions>
+            <connector><targetReference>screenActivatePolicy</targetReference></connector>
+            <label>Dual Approved — Activate</label>
+        </rules>
+    </decisions>
+
+    <!-- ─── recordLookups (ALL grouped) ──────────────────────────────── -->
+
+    <recordLookups>
+        <name>getPolicyRecord</name>
+        <label>Get Policy Record</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <assignNullValuesIfNoRecordsFound>false</assignNullValuesIfNoRecordsFound>
+        <connector>
+            <targetReference>routeByPolicyStatus</targetReference>
+        </connector>
+        <faultConnector>
+            <targetReference>assignCaptureFaultMessage</targetReference>
+        </faultConnector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>Id</field>
+            <operator>EqualTo</operator>
+            <value><elementReference>inp_RecordId</elementReference></value>
+        </filters>
+        <getFirstRecordOnly>true</getFirstRecordOnly>
+        <object>Spreading_Policy__c</object>
+        <outputReference>var_PolicyRecord</outputReference>
+        <queriedFields>Id</queriedFields>
+        <queriedFields>Status__c</queriedFields>
+    </recordLookups>
+
+    <!-- ─── screens (ALL grouped) ────────────────────────────────────── -->
+
+    <screens>
+        <name>screenActionComplete</name>
+        <label>Action Complete</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <fields>
+            <name>textSuccess</name>
+            <fieldText>&lt;p&gt;&lt;b&gt;Done.&lt;/b&gt; The policy status has been updated. Refresh the record page to see the new status.&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+
+    <screens>
+        <name>screenActionFailed</name>
+        <label>Action Failed</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <fields>
+            <name>textActionFailedHeader</name>
+            <fieldText>&lt;p&gt;&lt;b&gt;The action could not be completed.&lt;/b&gt;&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <fields>
+            <name>textActionFailedDetail</name>
+            <fieldText>{!var_ErrorMessage}</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+
+    <screens>
+        <name>screenActivatePolicy</name>
+        <label>Activate Policy</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <connector>
+            <targetReference>actionActivatePolicy</targetReference>
+        </connector>
+        <fields>
+            <name>textActivateIntro</name>
+            <fieldText>&lt;p&gt;&lt;b&gt;Activate Policy&lt;/b&gt;&lt;/p&gt;&lt;p&gt;This policy has received both approvals and is ready to activate. Any currently active policy for the same portfolio will be retired. New spreading evaluations will use this policy immediately.&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <nextOrFinishButtonLabel>Activate Policy</nextOrFinishButtonLabel>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+
+    <screens>
+        <name>screenFirstApproval</name>
+        <label>Record First Approval</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <connector>
+            <targetReference>actionFirstApproval</targetReference>
+        </connector>
+        <fields>
+            <name>textFirstApprovalIntro</name>
+            <fieldText>&lt;p&gt;&lt;b&gt;Record First Approval&lt;/b&gt;&lt;/p&gt;&lt;p&gt;You are recording your approval as the &lt;b&gt;first reviewer&lt;/b&gt;. A second reviewer from a different team must provide the second approval before this policy can be activated.&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <nextOrFinishButtonLabel>Record My Approval</nextOrFinishButtonLabel>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+
+    <screens>
+        <name>screenInvalidState</name>
+        <label>Policy Cannot Be Advanced</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <fields>
+            <name>textInvalidState</name>
+            <fieldText>&lt;p&gt;This policy is in &lt;b&gt;{!var_PolicyRecord.Status__c}&lt;/b&gt; status and cannot be advanced here. Only Draft, Pending Approval, Pending Second Approval, and Dual Approved policies can be processed by this flow.&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+
+    <screens>
+        <name>screenSecondApproval</name>
+        <label>Record Second Approval</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <connector>
+            <targetReference>actionSecondApproval</targetReference>
+        </connector>
+        <fields>
+            <name>textSecondApprovalIntro</name>
+            <fieldText>&lt;p&gt;&lt;b&gt;Record Second Approval&lt;/b&gt;&lt;/p&gt;&lt;p&gt;You are providing the &lt;b&gt;second and final approval&lt;/b&gt;. You must be a different user than the first approver. Once recorded the policy will be ready to activate.&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <nextOrFinishButtonLabel>Record Second Approval</nextOrFinishButtonLabel>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+
+    <screens>
+        <name>screenSubmitForApproval</name>
+        <label>Submit for Approval</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <connector>
+            <targetReference>actionSubmitForApproval</targetReference>
+        </connector>
+        <fields>
+            <name>textSubmitIntro</name>
+            <fieldText>&lt;p&gt;&lt;b&gt;Submit Policy for Approval&lt;/b&gt;&lt;/p&gt;&lt;p&gt;This moves the policy from &lt;b&gt;Draft&lt;/b&gt; to &lt;b&gt;Pending Approval&lt;/b&gt; and makes it available for the first reviewer.&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <nextOrFinishButtonLabel>Submit for Approval</nextOrFinishButtonLabel>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+
+    <screens>
+        <name>screenUnexpectedError</name>
+        <label>Unexpected Error</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <fields>
+            <name>textUnexpectedError</name>
+            <fieldText>&lt;p&gt;An unexpected error occurred: &lt;i&gt;{!var_ErrorMessage}&lt;/i&gt;&lt;/p&gt;&lt;p&gt;Contact your Salesforce administrator and provide the policy record Id.&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+
+    <!-- ─── start ─────────────────────────────────────────────────────── -->
+
+    <start>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>getPolicyRecord</targetReference>
+        </connector>
+    </start>
+
+    <!-- ─── variables (ALL grouped) ──────────────────────────────────── -->
+
+    <variables>
+        <name>inp_RecordId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+        <description>Id of the Spreading_Policy__c record to advance.</description>
+    </variables>
+
+    <variables>
+        <name>var_ActionSuccess</name>
+        <dataType>Boolean</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+        <value><booleanValue>false</booleanValue></value>
+        <description>True when the Apex invocable action completed without error.</description>
+    </variables>
+
+    <variables>
+        <name>var_PolicyRecord</name>
+        <dataType>SObject</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+        <objectType>Spreading_Policy__c</objectType>
+        <description>Policy record retrieved at flow entry; Status__c drives routing.</description>
+    </variables>
+
+    <variables>
+        <name>var_ErrorMessage</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+        <description>Error text from failed action or fault path.</description>
+    </variables>
+
+</Flow>

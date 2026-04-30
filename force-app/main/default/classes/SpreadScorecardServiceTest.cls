@@ -32,5 +32,27 @@ private class SpreadScorecardServiceTest {
         System.assertEquals(false, summaries[0].passed, 'Uncaught material error should fail the path.');
         System.assertEquals(1, summaries[0].uncaughtMaterialErrors);
     }
-}
 
+    @IsTest
+    static void ignoresRowsWithoutManualBaseline() {
+        Spread_Pilot_Run__c run = SpreadTestDataFactory.createPilotRun();
+        Spread_Document__c document = SpreadTestDataFactory.createDocument(run.Id);
+        Spread_Line_Item__c revenue = SpreadTestDataFactory.createLineItem(run.Id, document.Id, 'revenue', true);
+
+        insert new Spread_Path_Result__c(
+            Pilot_Run__c = run.Id,
+            Spread_Document__c = document.Id,
+            Spread_Line_Item__c = revenue.Id,
+            Path_Key__c = 'salesforce_native_staging',
+            Candidate_Value__c = 8450000,
+            Certification_Status__c = 'Uncertified',
+            Candidate_Minutes__c = 7
+        );
+
+        Test.startTest();
+        List<SpreadScorecardService.ScorecardSummary> summaries = SpreadScorecardService.calculateForRun(run.Id);
+        Test.stopTest();
+
+        System.assertEquals(0, summaries.size(), 'Rows without a manual baseline should not create scorecards.');
+    }
+}

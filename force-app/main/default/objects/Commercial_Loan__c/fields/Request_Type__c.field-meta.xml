@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Request_Type__c</fullName>
+    <label>Request Type</label>
+    <required>true</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>New</fullName><default>true</default><label>New</label></value>
+            <value><fullName>Renewal</fullName><default>false</default><label>Renewal</label></value>
+            <value><fullName>Increase</fullName><default>false</default><label>Increase</label></value>
+            <value><fullName>Annual Review</fullName><default>false</default><label>Annual Review</label></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

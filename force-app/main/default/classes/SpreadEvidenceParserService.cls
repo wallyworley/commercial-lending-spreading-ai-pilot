@@ -1,8 +1,12 @@
 public with sharing class SpreadEvidenceParserService {
     @TestVisible private static final String DEFAULT_PATH_KEY = 'salesforce_native_staging';
     @TestVisible private static final String PARSER_VERSION = 'deterministic-apex-v1';
-    @TestVisible private static final Pattern EVIDENCE_LINE_PATTERN =
-        Pattern.compile('^(.+?)(?::\\s*|\\s{2,}|\\s+(?=\\$|\\())(\\(?\\$?[\\d,]+(?:\\.\\d{1,2})?\\)?)$');
+    @TestVisible private static final Pattern FINANCIAL_VALUE_TOKEN_PATTERN =
+        Pattern.compile('\\(?\\$?[\\d,]+(?:\\.\\d{1,2})?\\)?');
+    @TestVisible private static final Pattern PERIOD_DATE_PATTERN =
+        Pattern.compile('(?i)(January|February|March|April|May|June|July|August|September|October|November|December)\\s+\\d{1,2},\\s*\\d{4}');
+    @TestVisible private static final Pattern YEAR_TOKEN_PATTERN =
+        Pattern.compile('\\b(19\\d{2}|20\\d{2})\\b');
     @TestVisible private static SpreadLineMappingSelector lineMappingSelector = new SpreadLineMappingSelector();
 
     public static SpreadingParseOutput parseDocument(Id spreadDocumentId, String pathKey) {
@@ -99,6 +103,11 @@ public with sharing class SpreadEvidenceParserService {
         List<Object> candidates = new List<Object>();
         List<Object> exceptions = new List<Object>();
         Set<String> seenLines = new Set<String>();
+        List<String> inferredPeriods = inferFiscalPeriods(document, evidenceBlocks);
+        String resolvedStatementType = inferStatementType(document, evidenceBlocks);
+        String resolvedFiscalPeriod = String.isBlank(document.Fiscal_Period__c)
+            ? (inferredPeriods.isEmpty() ? null : inferredPeriods[0])
+            : document.Fiscal_Period__c;
 
         for (Spread_Extraction_Evidence__c evidence : evidenceBlocks) {
             for (String rawLine : splitLines(evidence.Raw_Text__c)) {
@@ -112,45 +121,59 @@ public with sharing class SpreadEvidenceParserService {
                     continue;
                 }
 
-                if (seenLines.contains(mapping.Normalized_Line__c)) {
-                    exceptions.add(new Map<String, Object>{
-                        'reason' => 'Duplicate candidate for ' + mapping.Normalized_Line__c,
-                        'severity' => mapping.Requires_Reviewer__c ? 'error' : 'warning',
+                List<CandidateAmount> amounts = resolveCandidateAmounts(
+                    parsedLine,
+                    inferredPeriods,
+                    resolvedFiscalPeriod
+                );
+
+                for (CandidateAmount amount : amounts) {
+                    String seenKey = mapping.Normalized_Line__c + '|' + String.valueOf(amount.fiscalPeriod);
+                    if (seenLines.contains(seenKey)) {
+                        exceptions.add(new Map<String, Object>{
+                            'reason' => 'Duplicate candidate for ' + mapping.Normalized_Line__c
+                                + ' period ' + String.valueOf(amount.fiscalPeriod),
+                            'severity' => mapping.Requires_Reviewer__c ? 'error' : 'warning',
+                            'evidence_id' => String.valueOf(evidence.Id),
+                            'source_page' => evidence.Source_Page__c,
+                            'raw_text' => rawLine.trim()
+                        });
+                        continue;
+                    }
+
+                    Decimal normalizedValue;
+                    try {
+                        normalizedValue = parseFinancialNumber(amount.valueText);
+                    } catch (Exception error) {
+                        exceptions.add(new Map<String, Object>{
+                            'reason' => 'Unable to parse value for ' + parsedLine.label,
+                            'severity' => 'warning',
+                            'evidence_id' => String.valueOf(evidence.Id),
+                            'source_page' => evidence.Source_Page__c,
+                            'raw_text' => rawLine.trim()
+                        });
+                        continue;
+                    }
+
+                    seenLines.add(seenKey);
+                    candidates.add(new Map<String, Object>{
+                        'normalized_line' => mapping.Normalized_Line__c,
+                        'statement_type' => String.isBlank(mapping.Statement_Type__c)
+                            ? resolvedStatementType
+                            : mapping.Statement_Type__c,
+                        'fiscal_period' => amount.fiscalPeriod,
+                        'raw_label' => parsedLine.label,
+                        'raw_value' => amount.valueText,
+                        'normalized_value' => normalizedValue,
                         'evidence_id' => String.valueOf(evidence.Id),
                         'source_page' => evidence.Source_Page__c,
-                        'raw_text' => rawLine.trim()
+                        'source_coordinates' => evidence.Source_Coordinates__c,
+                        'confidence' => confidenceFor(mapping),
+                        'exception_reason' => mapping.Requires_Reviewer__c ? 'Reviewer validation required by line mapping policy.' : null,
+                        'status' => mapping.Requires_Reviewer__c ? 'exception' : 'draft',
+                        'material' => mapping.Material_Default__c
                     });
-                    continue;
                 }
-
-                Decimal normalizedValue;
-                try {
-                    normalizedValue = parseFinancialNumber(parsedLine.valueText);
-                } catch (Exception error) {
-                    exceptions.add(new Map<String, Object>{
-                        'reason' => 'Unable to parse value for ' + parsedLine.label,
-                        'severity' => 'warning',
-                        'evidence_id' => String.valueOf(evidence.Id),
-                        'source_page' => evidence.Source_Page__c,
-                        'raw_text' => rawLine.trim()
-                    });
-                    continue;
-                }
-
-                seenLines.add(mapping.Normalized_Line__c);
-                candidates.add(new Map<String, Object>{
-                    'normalized_line' => mapping.Normalized_Line__c,
-                    'raw_label' => parsedLine.label,
-                    'raw_value' => parsedLine.valueText,
-                    'normalized_value' => normalizedValue,
-                    'evidence_id' => String.valueOf(evidence.Id),
-                    'source_page' => evidence.Source_Page__c,
-                    'source_coordinates' => evidence.Source_Coordinates__c,
-                    'confidence' => confidenceFor(mapping),
-                    'exception_reason' => mapping.Requires_Reviewer__c ? 'Reviewer validation required by line mapping policy.' : null,
-                    'status' => mapping.Requires_Reviewer__c ? 'exception' : 'draft',
-                    'material' => mapping.Material_Default__c
-                });
             }
         }
 
@@ -163,8 +186,8 @@ public with sharing class SpreadEvidenceParserService {
 
         return JSON.serialize(new Map<String, Object>{
             'document_id' => String.valueOf(document.Id),
-            'statement_type' => document.Statement_Type__c,
-            'fiscal_period' => document.Fiscal_Period__c,
+            'statement_type' => resolvedStatementType,
+            'fiscal_period' => resolvedFiscalPeriod,
             'parser_version' => PARSER_VERSION,
             'candidates' => candidates,
             'exceptions' => exceptions
@@ -183,11 +206,164 @@ public with sharing class SpreadEvidenceParserService {
         if (String.isBlank(trimmed)) {
             return null;
         }
-        Matcher matcher = EVIDENCE_LINE_PATTERN.matcher(trimmed);
-        if (!matcher.matches()) {
+
+        Matcher matcher = FINANCIAL_VALUE_TOKEN_PATTERN.matcher(trimmed);
+        List<String> valueTexts = new List<String>();
+        Integer firstValueIndex;
+        while (matcher.find()) {
+            if (firstValueIndex == null) {
+                firstValueIndex = matcher.start();
+            }
+            valueTexts.add(matcher.group().trim());
+        }
+
+        if (valueTexts.isEmpty() || firstValueIndex == null) {
             return null;
         }
-        return new ParsedEvidenceLine(matcher.group(1).trim(), matcher.group(2).trim());
+
+        String label = trimmed.substring(0, firstValueIndex).trim();
+        if (String.isBlank(label)) {
+            return null;
+        }
+        return new ParsedEvidenceLine(label, valueTexts);
+    }
+
+    private static List<CandidateAmount> resolveCandidateAmounts(
+        ParsedEvidenceLine parsedLine,
+        List<String> inferredPeriods,
+        String fallbackFiscalPeriod
+    ) {
+        List<CandidateAmount> amounts = new List<CandidateAmount>();
+        Integer valueCount = parsedLine.valueTexts.size();
+        if (valueCount == 1) {
+            String fiscalPeriod = String.isBlank(fallbackFiscalPeriod)
+                ? (inferredPeriods.isEmpty() ? null : inferredPeriods[0])
+                : fallbackFiscalPeriod;
+            amounts.add(new CandidateAmount(parsedLine.valueTexts[0], fiscalPeriod));
+            return amounts;
+        }
+
+        if (inferredPeriods.size() >= valueCount) {
+            for (Integer index = 0; index < valueCount; index++) {
+                amounts.add(new CandidateAmount(parsedLine.valueTexts[index], inferredPeriods[index]));
+            }
+            return amounts;
+        }
+
+        amounts.add(new CandidateAmount(parsedLine.valueTexts[0], fallbackFiscalPeriod));
+        return amounts;
+    }
+
+    private static List<String> inferFiscalPeriods(
+        Spread_Document__c document,
+        List<Spread_Extraction_Evidence__c> evidenceBlocks
+    ) {
+        List<String> periods = new List<String>();
+        Set<String> seen = new Set<String>();
+
+        for (Spread_Extraction_Evidence__c evidence : evidenceBlocks) {
+            Matcher matcher = PERIOD_DATE_PATTERN.matcher(String.valueOf(evidence.Raw_Text__c));
+            while (matcher.find()) {
+                String period = formatDatePeriod(matcher.group());
+                if (!String.isBlank(period) && !seen.contains(period)) {
+                    periods.add(period);
+                    seen.add(period);
+                }
+            }
+        }
+
+        if (!periods.isEmpty()) {
+            return periods;
+        }
+
+        if (!String.isBlank(document.Fiscal_Period__c)) {
+            periods.add(document.Fiscal_Period__c);
+            seen.add(document.Fiscal_Period__c);
+            return periods;
+        }
+
+        for (Spread_Extraction_Evidence__c evidence : evidenceBlocks) {
+            for (String rawLine : splitLines(evidence.Raw_Text__c)) {
+                String normalizedLine = normalizeLabel(rawLine);
+                Boolean looksLikePeriodHeader = normalizedLine.contains('year')
+                    || normalizedLine.contains('period')
+                    || normalizedLine.contains('assets')
+                    || normalizedLine.contains('liabilities')
+                    || normalizedLine.contains('income');
+                if (!looksLikePeriodHeader) {
+                    continue;
+                }
+
+                Matcher yearMatcher = YEAR_TOKEN_PATTERN.matcher(rawLine);
+                while (yearMatcher.find()) {
+                    String period = 'FY' + yearMatcher.group(1);
+                    if (!seen.contains(period)) {
+                        periods.add(period);
+                        seen.add(period);
+                    }
+                }
+            }
+        }
+
+        return periods;
+    }
+
+    private static String inferStatementType(
+        Spread_Document__c document,
+        List<Spread_Extraction_Evidence__c> evidenceBlocks
+    ) {
+        if (!String.isBlank(document.Statement_Type__c)) {
+            return document.Statement_Type__c;
+        }
+
+        for (Spread_Extraction_Evidence__c evidence : evidenceBlocks) {
+            String normalizedText = normalizeLabel(evidence.Raw_Text__c);
+            if (normalizedText.contains('balance sheet')) {
+                return 'balance_sheet';
+            }
+            if (normalizedText.contains('income statement')
+                || normalizedText.contains('statements of operations')
+                || normalizedText.contains('profit and loss')) {
+                return 'income_statement';
+            }
+        }
+        return null;
+    }
+
+    private static String formatDatePeriod(String rawDateText) {
+        if (String.isBlank(rawDateText)) {
+            return null;
+        }
+        Matcher matcher = Pattern.compile(
+            '(?i)^(January|February|March|April|May|June|July|August|September|October|November|December)\\s+(\\d{1,2}),\\s*(\\d{4})$'
+        ).matcher(rawDateText.trim());
+        if (!matcher.matches()) {
+            return rawDateText.trim();
+        }
+
+        return monthNumber(matcher.group(1)) + '/'
+            + String.valueOf(Integer.valueOf(matcher.group(2))) + '/'
+            + matcher.group(3);
+    }
+
+    private static String monthNumber(String monthName) {
+        String normalized = String.isBlank(monthName) ? '' : monthName.toLowerCase();
+        Map<String, Integer> monthsByName = new Map<String, Integer>{
+            'january' => 1,
+            'february' => 2,
+            'march' => 3,
+            'april' => 4,
+            'may' => 5,
+            'june' => 6,
+            'july' => 7,
+            'august' => 8,
+            'september' => 9,
+            'october' => 10,
+            'november' => 11,
+            'december' => 12
+        };
+        Integer month = monthsByName.get(normalized);
+        return String.valueOf(month == null ? 12 : month);
     }
 
     private static Decimal parseFinancialNumber(String valueText) {
@@ -242,11 +418,21 @@ public with sharing class SpreadEvidenceParserService {
 
     private class ParsedEvidenceLine {
         public String label;
-        public String valueText;
+        public List<String> valueTexts;
 
-        public ParsedEvidenceLine(String label, String valueText) {
+        public ParsedEvidenceLine(String label, List<String> valueTexts) {
             this.label = label;
+            this.valueTexts = valueTexts;
+        }
+    }
+
+    private class CandidateAmount {
+        public String valueText;
+        public String fiscalPeriod;
+
+        public CandidateAmount(String valueText, String fiscalPeriod) {
             this.valueText = valueText;
+            this.fiscalPeriod = fiscalPeriod;
         }
     }
 }

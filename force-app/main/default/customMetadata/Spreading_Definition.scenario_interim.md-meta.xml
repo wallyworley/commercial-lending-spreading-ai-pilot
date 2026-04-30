@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Interim</label>
+    <protected>false</protected>
+    <values><field>Category__c</field><value xsi:type="xsd:string">Scenario Classification</value></values>
+    <values><field>Value__c</field><value xsi:type="xsd:string">interim</value></values>
+    <values><field>Description__c</field><value xsi:type="xsd:string">Mid-year or stub-period statements. Typically annualized for ratio comparison. Flag if period is less than 6 months.</value></values>
+    <values><field>Active__c</field><value xsi:type="xsd:boolean">true</value></values>
+    <values><field>Sort_Order__c</field><value xsi:type="xsd:double">31</value></values>
+</CustomMetadata>

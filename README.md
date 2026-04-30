@@ -1,14 +1,30 @@
 # C&I Financial Spreading AI Evidence Pilot
 
-This project is a standalone evidence pilot for a $25B commercial lending bank evaluating whether AI-assisted financial spreading is accurate, governable, and safe enough for production use with Salesforce and nCino.
+This project is an evidence pilot for a $25B commercial lending bank evaluating whether AI-assisted financial spreading is accurate, governable, and safe enough for production use with Salesforce and nCino.
 
-The pilot does not assume that automated spreading should be purchased. It compares three paths:
+The pilot compares three paths:
 
-1. nCino Automated Spreading as the vendor benchmark.
-2. Salesforce-native document extraction and staging patterns.
-3. nCino Document Manager and Spreads with improved manual workflow as the control case.
+1. **nCino Automated Spreading** — vendor benchmark using nCino Document Manager and Spreads
+2. **Salesforce-Native Extraction and Staging** — AI-assisted evidence extraction with human certification (now implemented)
+3. **Manual nCino Control Case** — baseline manual workflow without AI
 
-The default operating model is draft-only AI prefill with human certification. No AI-generated value should affect underwriting, covenant analysis, risk rating, or credit memo output until a credit user certifies the material line items.
+The default operating model is **draft-only AI prefill with mandatory human certification**. No AI-generated value affects underwriting, covenant analysis, risk rating, or credit memo output until a credit analyst certifies the material line items.
+
+## Quick Start
+
+The Salesforce-native path is ready to deploy to a sandbox:
+
+```bash
+# Deploy metadata to Salesforce org
+sf project deploy start
+
+# Or use the pilot workbench CSV workflow
+npm install
+npm run generate:synthetic
+npm run scorecard -- data/synthetic/pilot-scorecard.csv
+```
+
+For details, see `docs/implementation-status.md`.
 
 ## Project Contents
 

@@ -22,6 +22,7 @@ Spread_Document__c document = new Spread_Document__c(
     Scenario_Type__c = 'clean_native_pdf',
     Source_System__c = 'Salesforce Files',
     Extraction_Status__c = 'Complete',
+    Parsing_Status__c = 'Complete',
     Page_Count__c = 18,
     Contains_Confidential_Data__c = true
 );

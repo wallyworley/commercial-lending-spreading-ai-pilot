@@ -69,6 +69,43 @@ private class SpreadDocumentServiceTest {
     }
 
     @IsTest
+    static void testOnUploadInheritsCommercialLoanContext() {
+        Commercial_Loan__c loan = SpreadTestDataFactory.createCommercialLoan();
+        SpreadWorkbenchController.PilotRunOption runOption =
+            SpreadWorkbenchController.getOrCreatePilotRunForLoan(loan.Id);
+
+        ContentVersion version = new ContentVersion();
+        version.Title = 'Borrower FY2025 Statement';
+        version.PathOnClient = 'borrower-fy2025.pdf';
+        version.VersionData = Blob.valueOf('Test content');
+        version.IsMajorVersion = true;
+        insert version;
+
+        version = [SELECT ContentDocumentId FROM ContentVersion WHERE Id = :version.Id];
+
+        Test.startTest();
+        List<Id> createdDocIds = SpreadDocumentService.onUpload(
+            runOption.id,
+            new List<String>{ version.ContentDocumentId }
+        );
+        Test.stopTest();
+
+        Spread_Document__c doc = [
+            SELECT Commercial_Loan__c, Borrower__c, Loan_Or_Opportunity__c
+            FROM Spread_Document__c
+            WHERE Id = :createdDocIds[0]
+        ];
+        Commercial_Loan__c refreshedLoan = [
+            SELECT Id, Name, Borrower__c
+            FROM Commercial_Loan__c
+            WHERE Id = :loan.Id
+        ];
+        Assert.areEqual(loan.Id, doc.Commercial_Loan__c, 'Uploaded documents should stay attached to the loan cockpit.');
+        Assert.areEqual(refreshedLoan.Borrower__c, doc.Borrower__c, 'Borrower should flow from the commercial loan.');
+        Assert.areEqual(refreshedLoan.Name, doc.Loan_Or_Opportunity__c, 'Legacy text field should still show the loan reference.');
+    }
+
+    @IsTest
     static void testOnUploadCreatesDocumentWhenVersionMetadataIsNotReady() {
         Spread_Pilot_Run__c run = [SELECT Id FROM Spread_Pilot_Run__c LIMIT 1];
 
@@ -184,6 +221,11 @@ private class SpreadDocumentServiceTest {
         parsedDoc.Parsing_Status__c = 'Complete';
         update parsedDoc;
 
+        Spread_Document__c reviewDoc = SpreadTestDataFactory.createDocument(run.Id);
+        reviewDoc.Name = 'Parsed Needs Review';
+        reviewDoc.Parsing_Status__c = 'Needs Review';
+        update reviewDoc;
+
         SpreadEvidenceService.createTextEvidence(
             readyDoc.Id,
             'Revenue: $8,450,000',
@@ -198,7 +240,7 @@ private class SpreadDocumentServiceTest {
 
         Assert.areEqual(1, result.attemptedCount, 'Only one document should be eligible.');
         Assert.areEqual(1, result.parsedCount, 'The ready document should be parsed.');
-        Assert.areEqual(2, result.skippedCount, 'The non-eligible documents should be skipped.');
+        Assert.areEqual(3, result.skippedCount, 'The non-eligible documents should be skipped.');
         Assert.areEqual(0, result.failedCount, 'No bulk parse failures were expected.');
     }
 }

@@ -30,6 +30,7 @@ public with sharing class SpreadWorkbenchController {
         @AuraEnabled public String certificationStatus;
         @AuraEnabled public Boolean exceptionFlag;
         @AuraEnabled public String errorType;
+        @AuraEnabled public Id primaryEvidenceId;
     }
 
     public class PilotRunOption {
@@ -40,6 +41,8 @@ public with sharing class SpreadWorkbenchController {
         @AuraEnabled public Datetime startedAt;
         @AuraEnabled public Integer documentCount;
         @AuraEnabled public Integer lineItemCount;
+        @AuraEnabled public Id commercialLoanId;
+        @AuraEnabled public String commercialLoanName;
     }
 
     public class MaterialErrorRow {
@@ -58,7 +61,7 @@ public with sharing class SpreadWorkbenchController {
     @AuraEnabled(cacheable=true)
     public static List<PilotRunOption> getPilotRuns() {
         List<Spread_Pilot_Run__c> runs = [
-            SELECT Id, Name, Status__c, Portfolio__c, Started_At__c
+            SELECT Id, Name, Status__c, Portfolio__c, Started_At__c, Commercial_Loan__c, Commercial_Loan__r.Name
             FROM Spread_Pilot_Run__c
             WITH USER_MODE
             ORDER BY CreatedDate DESC
@@ -70,17 +73,65 @@ public with sharing class SpreadWorkbenchController {
 
         List<PilotRunOption> options = new List<PilotRunOption>();
         for (Spread_Pilot_Run__c run : runs) {
-            PilotRunOption option = new PilotRunOption();
-            option.id = run.Id;
-            option.label = run.Name;
-            option.status = run.Status__c;
-            option.portfolio = run.Portfolio__c;
-            option.startedAt = run.Started_At__c;
-            option.documentCount = documentCounts.containsKey(run.Id) ? documentCounts.get(run.Id) : 0;
-            option.lineItemCount = lineCounts.containsKey(run.Id) ? lineCounts.get(run.Id) : 0;
-            options.add(option);
+            options.add(toPilotRunOption(run, documentCounts, lineCounts));
         }
         return options;
+    }
+
+    @AuraEnabled
+    public static PilotRunOption getOrCreatePilotRunForLoan(Id commercialLoanId) {
+        if (commercialLoanId == null) {
+            throw new AuraHandledException('Commercial loan ID is required.');
+        }
+
+        Commercial_Loan__c loan = [
+            SELECT Id, Name, Borrower__c, Borrower__r.Name, Portfolio__c, Stage__c
+            FROM Commercial_Loan__c
+            WHERE Id = :commercialLoanId
+            WITH USER_MODE
+            LIMIT 1
+        ];
+
+        List<Spread_Pilot_Run__c> runs = [
+            SELECT Id, Name, Status__c, Portfolio__c, Started_At__c, Commercial_Loan__c, Commercial_Loan__r.Name
+            FROM Spread_Pilot_Run__c
+            WHERE Commercial_Loan__c = :commercialLoanId
+            WITH USER_MODE
+            ORDER BY CreatedDate DESC
+            LIMIT 1
+        ];
+
+        Spread_Pilot_Run__c run;
+        if (runs.isEmpty()) {
+            String borrowerName = loan.Borrower__r == null ? loan.Name : loan.Borrower__r.Name;
+            run = new Spread_Pilot_Run__c(
+                Commercial_Loan__c = loan.Id,
+                Status__c = 'Spreading',
+                Portfolio__c = String.isBlank(loan.Portfolio__c) ? 'C&I' : loan.Portfolio__c,
+                Started_At__c = System.now(),
+                Notes__c = 'Auto-created spreading workspace for ' + borrowerName + ' commercial loan ' + loan.Name + '.'
+            );
+            insert run;
+
+            if (loan.Stage__c == 'Intake') {
+                update new Commercial_Loan__c(Id = loan.Id, Stage__c = 'Spreading');
+            }
+
+            run = [
+                SELECT Id, Name, Status__c, Portfolio__c, Started_At__c, Commercial_Loan__c, Commercial_Loan__r.Name
+                FROM Spread_Pilot_Run__c
+                WHERE Id = :run.Id
+                WITH USER_MODE
+                LIMIT 1
+            ];
+        } else {
+            run = runs[0];
+        }
+
+        Set<Id> runIds = new Set<Id>{ run.Id };
+        Map<Id, Integer> documentCounts = countByRun('Spread_Document__c', runIds);
+        Map<Id, Integer> lineCounts = countByRun('Spread_Line_Item__c', runIds);
+        return toPilotRunOption(run, documentCounts, lineCounts);
     }
 
     @AuraEnabled(cacheable=true)
@@ -101,6 +152,9 @@ public with sharing class SpreadWorkbenchController {
             WITH USER_MODE
             LIMIT 2000
         ]) {
+            if (result.Manual_Value__c == null) {
+                continue;
+            }
             Decimal manualValue = valueOrZero(result.Manual_Value__c);
             Decimal candidateValue = valueOrZero(result.Candidate_Value__c);
             if (manualValue == candidateValue) {
@@ -214,7 +268,7 @@ public with sharing class SpreadWorkbenchController {
         for (Spread_Path_Result__c result : [
             SELECT Id, Path_Key__c, Manual_Value__c, Candidate_Value__c,
                    Variance_Amount__c, Variance_Pct__c, Certification_Status__c,
-                   Exception_Flag__c, Error_Type__c, Spread_Line_Item__c
+                   Exception_Flag__c, Error_Type__c, Spread_Line_Item__c, Primary_Evidence__c
             FROM Spread_Path_Result__c
             WHERE Spread_Line_Item__c IN :lineIds
             WITH USER_MODE
@@ -234,6 +288,7 @@ public with sharing class SpreadWorkbenchController {
             pr.certificationStatus = result.Certification_Status__c;
             pr.exceptionFlag = result.Exception_Flag__c;
             pr.errorType = result.Error_Type__c;
+            pr.primaryEvidenceId = result.Primary_Evidence__c;
             bucket.add(pr);
             if (result.Path_Key__c != null) {
                 pathKeySet.add(result.Path_Key__c);
@@ -279,7 +334,116 @@ public with sharing class SpreadWorkbenchController {
         return counts;
     }
 
+    private static PilotRunOption toPilotRunOption(
+        Spread_Pilot_Run__c run,
+        Map<Id, Integer> documentCounts,
+        Map<Id, Integer> lineCounts
+    ) {
+        PilotRunOption option = new PilotRunOption();
+        option.id = run.Id;
+        option.label = run.Name;
+        option.status = run.Status__c;
+        option.portfolio = run.Portfolio__c;
+        option.startedAt = run.Started_At__c;
+        option.documentCount = documentCounts.containsKey(run.Id) ? documentCounts.get(run.Id) : 0;
+        option.lineItemCount = lineCounts.containsKey(run.Id) ? lineCounts.get(run.Id) : 0;
+        option.commercialLoanId = run.Commercial_Loan__c;
+        option.commercialLoanName = run.Commercial_Loan__r == null ? null : run.Commercial_Loan__r.Name;
+        return option;
+    }
+
     private static Decimal valueOrZero(Decimal value) {
         return value == null ? 0 : value;
+    }
+
+    // ─── Policy Thresholds Tab ───────────────────────────────────────────────
+
+    public class PolicyThresholdResult {
+        @AuraEnabled public String policyId;
+        @AuraEnabled public String policyName;
+        @AuraEnabled public String policyVersion;
+        @AuraEnabled public String policyStatus;
+        @AuraEnabled public String portfolio;
+        @AuraEnabled public Date effectiveStart;
+        @AuraEnabled public Date effectiveEnd;
+        @AuraEnabled public Boolean dualApproved;
+        @AuraEnabled public List<ThresholdRow> thresholds;
+    }
+
+    public class ThresholdRow {
+        @AuraEnabled public String thresholdId;
+        @AuraEnabled public String metric;
+        @AuraEnabled public String operator;
+        @AuraEnabled public Decimal minimumValue;
+        @AuraEnabled public Decimal maximumValue;
+        @AuraEnabled public String severity;
+        @AuraEnabled public Boolean appliesToMaterialLine;
+        @AuraEnabled public Boolean requiresExceptionApproval;
+        @AuraEnabled public String narrativeGuidance;
+        @AuraEnabled public String displayRange;
+    }
+
+    @AuraEnabled(cacheable=false)
+    public static PolicyThresholdResult getActivePolicyThresholds(String portfolio) {
+        SpreadingPolicyService svc = new SpreadingPolicyService();
+        Spreading_Policy__c policy = svc.resolveActivePolicy(
+            portfolio, null, null, Date.today()
+        );
+
+        PolicyThresholdResult result = new PolicyThresholdResult();
+
+        if (policy == null) {
+            result.thresholds = new List<ThresholdRow>();
+            return result;
+        }
+
+        result.policyId      = policy.Id;
+        result.policyName    = policy.Name;
+        result.policyVersion = policy.Version__c;
+        result.policyStatus  = policy.Status__c;
+        result.portfolio     = policy.Portfolio__c;
+        result.effectiveStart = policy.Effective_Start_Date__c;
+        result.effectiveEnd   = policy.Effective_End_Date__c;
+        result.dualApproved  = SpreadPolicyRules.isDualApproved(policy);
+
+        List<Spreading_Threshold__c> raw = svc.resolveThresholds(
+            portfolio, null, null, Date.today()
+        );
+
+        List<ThresholdRow> rows = new List<ThresholdRow>();
+        for (Spreading_Threshold__c t : raw) {
+            ThresholdRow row = new ThresholdRow();
+            row.thresholdId              = t.Id;
+            row.metric                   = t.Metric__c;
+            row.operator                 = t.Operator__c;
+            row.minimumValue             = t.Minimum_Value__c;
+            row.maximumValue             = t.Maximum_Value__c;
+            row.severity                 = t.Severity_When_Failed__c;
+            row.appliesToMaterialLine    = t.Applies_To_Material_Line__c;
+            row.requiresExceptionApproval = t.Requires_Exception_Approval__c;
+            row.narrativeGuidance        = t.Narrative_Guidance__c;
+            row.displayRange             = buildDisplayRange(t);
+            rows.add(row);
+        }
+        result.thresholds = rows;
+        return result;
+    }
+
+    private static String buildDisplayRange(Spreading_Threshold__c t) {
+        String op  = t.Operator__c;
+        Decimal mn = t.Minimum_Value__c;
+        Decimal mx = t.Maximum_Value__c;
+        if (op == 'Between' && mn != null && mx != null) {
+            return mn.stripTrailingZeros().toPlainString()
+                + ' – '
+                + mx.stripTrailingZeros().toPlainString();
+        }
+        if ((op == '>=' || op == '>') && mn != null) {
+            return op + ' ' + mn.stripTrailingZeros().toPlainString();
+        }
+        if ((op == '<=' || op == '<') && mx != null) {
+            return op + ' ' + mx.stripTrailingZeros().toPlainString();
+        }
+        return '—';
     }
 }

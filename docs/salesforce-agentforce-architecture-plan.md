@@ -13,6 +13,88 @@ Resolved implementation decisions:
 - Audit logs, reports, files, and agent records must support seven-year retention, with an offload/archive path.
 - A React POC is desired eventually, after the LWC baseline is stable.
 
+## Implementation Status — April 29, 2026
+
+This plan was researched on April 20, 2026. The following components are now implemented and deployed to the Agentforce sandbox:
+
+Current direction:
+
+- Everything goes into Agentforce from now on.
+- nCino is not part of the active build.
+- The current loan context is the fake `Commercial_Loan__c` object.
+- The current parser is deterministic Apex, not an LLM.
+- Agentforce should be added as an assistant/action layer after the LWC baseline is stable.
+
+### Completed ✓
+
+**Data Model**
+- ✓ `Spread_Document__c` — Full object with all planned fields for document tracking and status
+- ✓ `Spread_Extraction_Evidence__c` — Evidence staging with raw docling output, page references, and metadata
+- ✓ `Spread_Line_Item__c` — Normalized spread line items with primary evidence links
+- ✓ `Spread_Path_Result__c` — Path comparison results with variance calculation
+- ✓ `Commercial_Loan__c` — Sandbox loan context object for the current spreading cockpit
+- ✓ `Spread_Path__mdt` — Custom metadata for path definitions (manual_ncino_control, ncino_automated_spreading, salesforce_native_staging)
+- ✓ `Spreading_Pilot_Analyst` permission set — Access control for pilot objects
+
+**Document Processing Pipeline**
+- ✓ `ExtractionQueueable` — Async extraction via Docling Named Credential
+- ✓ Transient retry handling for Render loading, 503, timeout, and chunk termination failures
+- ✓ `DoclingKeepWarmSchedulable` — Keep-warm scheduling to reduce cold-start latency
+- ✓ `SpreadEvidenceService` — Creates Spread_Extraction_Evidence__c with full docling output
+- ✓ `ParsingQueueable` — Refactored to invoke SpreadCandidateParserService
+- ✓ `SpreadEvidenceParserService` — Deterministic parser with line mapping and period inference
+- ✓ `SpreadCandidateParserService` — Imports draft parser output into line items and path results
+
+**Scoring and Certification**
+- ✓ `SpreadScorecardService` — Calculates exact-match, dollar-weighted accuracy, exceptions
+- ✓ `SpreadCertificationService` — Certification workflow with reviewer signature and timestamp
+- ✓ `SpreadLineMappingSelector` — Retrieves active line mappings
+
+**Analyst Workbench (LWC)**
+- ✓ `commercialSpreadingPilotWorkbench` — Major update with tabs for upload, review, scorecard, errors
+- ✓ Document upload and async status polling
+- ✓ Analyst-style spread review with period columns, evidence links, and certification actions
+- ✓ Scorecard display with path comparison
+- ✓ Material error reporting
+
+**Infrastructure**
+- ✓ Docling Named Credential with External Credentials pattern
+- ✓ Error handling and retry logic
+- ✓ Full test coverage: ExtractionQueueableTest, ParsingQueueableTest, SpreadScorecardServiceTest, workbench tests
+
+### In Progress / Partially Complete ⚠
+
+- **Multi-path comparison**: Salesforce native path is built. nCino and manual paths are data-only (awaiting nCino API docs).
+- **Prompt-based parsing**: Current parser is deterministic Apex. Prompt Builder / Agentforce integration pending Phase 2.
+- **Policy and threshold objects**: `Spreading_Policy__c` and `Spreading_Threshold__c` are available enough for the current policy threshold tab, but workflow governance needs more UAT.
+- **Flow-based review routing**: Not yet implemented; certification currently via Apex actions only.
+- **Agentforce assistant**: Not yet integrated. Defined as Phase 2 post-LWC-baseline.
+- **PDF reporting**: Report data structures defined; PDF generation pending.
+- **Analyst adjustments**: Not yet implemented. Next likely UX/data step is an adjust action that preserves extracted value and stores reviewed analyst value with reason.
+
+### Not Yet Started (Phase 2+)
+
+- **Agentforce actions** (8 defined in plan, not yet created)
+- **nCino provider adapter** (awaiting supported API documentation)
+- **Data 360 borrower context layer** (optional Phase 2+)
+- **Seven-year evidence retention and archive/offload path** (design pending)
+- **React Multi-Framework POC** (after LWC baseline stable)
+- **External PDF rendering** (if needed after Salesforce-native evaluation)
+
+### Production Readiness Assessment
+
+The Salesforce-native extraction path is now a production candidate for sandbox demo or limited pilot. Before production deployment:
+
+- [ ] Confirm nCino API documentation for integration
+- [ ] Implement Flow-based review routing
+- [ ] Validate pilot gate performance (98% exact match, 99.5% dollar accuracy, zero uncaught material errors, 30% time reduction)
+- [ ] Design and implement seven-year retention and archive/offload strategy
+- [ ] Deploy to pilot sandbox and run UAT with credit analysts
+- [ ] Model-risk approval of evidence and scorecard design
+- [ ] Information security approval of data movement and Docling credential handling
+
+See `docs/implementation-status.md` for detailed component inventory and test coverage.
+
 ## Recommendation
 
 Do not move the whole project into an Agent Script agent.
@@ -66,16 +148,16 @@ Analyst uploads PDF/JPEG via LWC file upload component
           or Salesforce Document AI / supported nCino extraction provider where available
        -> Extraction provider returns raw evidence: page text, tables, page references, optional coordinates
   -> Spread_Extraction_Evidence__c records created
-  -> Apex invokes Prompt Builder / Agentforce parsing action with:
+  -> deterministic Apex parser receives:
        extracted evidence + bank spread schema + active line mapping configuration
-  -> Prompt returns validated JSON draft spread candidates
+  -> parser returns validated JSON draft spread candidates
   -> Spread_Line_Item__c staging records created (draft, not certified)
   -> Spread_Path_Result__c per comparison path
   -> Spreading_Policy__c / Spreading_Threshold__c gate evaluation
   -> Pilot_Scorecard_Result__c
   -> LWC analyst workbench: review, certify, flag exceptions
   -> Flow review/certification routing
-  -> Agentforce assistant for guided analysis and exception explanation
+  -> future Agentforce assistant for guided analysis and exception explanation
   -> optional nCino spread adapter, once supported documentation is available
   -> ⚑ optional Data 360 borrower context layer (Phase 2+), grounded via Data Graph API
 ```
