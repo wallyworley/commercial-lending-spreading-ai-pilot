@@ -347,6 +347,17 @@
                                                                             data-period-label={cell.period}
                                                                             onclick={handleOpenBaselineDialog}
                                                                         ></lightning-button>
+                                                                        <lightning-button
+                                                                            class="slds-m-top_x-small"
+                                                                            variant="base"
+                                                                            label={cell.overrideActionLabel}
+                                                                            data-path-result-id={cell.pathResultId}
+                                                                            data-reviewed-value={cell.reviewedValue}
+                                                                            data-candidate-value={cell.candidateValue}
+                                                                            data-line-label={row.displayLine}
+                                                                            data-period-label={cell.period}
+                                                                            onclick={handleOpenOverrideDialog}
+                                                                        ></lightning-button>
                                                                     </template>
                                                                 </div>
                                                             </td>
@@ -553,6 +564,57 @@
                         variant="brand"
                         onclick={handleBaselineDialogSave}
                         disabled={isBaselineSaveDisabled}
+                    ></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <template lwc:if={isOverrideDialogOpen}>
+        <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Set Analyst Override"
+            class="slds-modal slds-fade-in-open"
+        >
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <h2 class="slds-text-heading_medium">Set Analyst Override</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <p class="slds-m-bottom_small">
+                        {overrideLineLabel}
+                        <template lwc:if={overridePeriodLabel}>
+                            <span> | {overridePeriodLabel}</span>
+                        </template>
+                    </p>
+                    <lightning-input
+                        type="number"
+                        label="Reviewed Value"
+                        value={overrideAmount}
+                        step="0.01"
+                        onchange={handleOverrideAmountChange}
+                    ></lightning-input>
+                    <lightning-textarea
+                        class="slds-m-top_small"
+                        label="Reason"
+                        value={overrideReason}
+                        onchange={handleOverrideReasonChange}
+                        required
+                    ></lightning-textarea>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button
+                        label="Cancel"
+                        onclick={handleOverrideDialogCancel}
+                        class="slds-m-right_small"
+                    ></lightning-button>
+                    <lightning-button
+                        label="Save Override"
+                        variant="brand"
+                        onclick={handleOverrideDialogSave}
+                        disabled={isOverrideSaveDisabled}
                     ></lightning-button>
                 </footer>
             </div>

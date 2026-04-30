@@ -26,6 +26,8 @@ private class SpreadDocumentRecordPageControllerTest {
             'Certified'
         );
         pathResult.Primary_Evidence__c = evidence.evidenceId;
+        pathResult.Reviewed_Value__c = 975000;
+        pathResult.Reviewed_Reason__c = 'Analyst adjusted for recurring normalization.';
         update pathResult;
 
         insert new Spread_Exception__c(
@@ -52,6 +54,8 @@ private class SpreadDocumentRecordPageControllerTest {
         System.assertEquals(1, view.pathResults.size());
         System.assertEquals('salesforce_native_staging', view.pathResults[0].pathKey);
         System.assertEquals(evidence.evidenceId, view.pathResults[0].primaryEvidenceId);
+        System.assertEquals(975000, view.pathResults[0].reviewedValue);
+        System.assertEquals('Analyst adjusted for recurring normalization.', view.pathResults[0].reviewedReason);
         System.assertEquals(1, view.exceptions.size());
         System.assertEquals('Warning', view.exceptions[0].severity);
     }

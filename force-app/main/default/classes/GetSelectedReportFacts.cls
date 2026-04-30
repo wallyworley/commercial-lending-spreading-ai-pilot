@@ -52,7 +52,7 @@ public with sharing class GetSelectedReportFacts {
 
         Map<Id, List<Spread_Path_Result__c>> resultsByLine = new Map<Id, List<Spread_Path_Result__c>>();
         for (Spread_Path_Result__c result : [
-            SELECT Id, Path_Key__c, Manual_Value__c, Candidate_Value__c, Variance_Amount__c,
+            SELECT Id, Path_Key__c, Manual_Value__c, Candidate_Value__c, Reviewed_Value__c, Variance_Amount__c,
                    Certification_Status__c, Error_Type__c, Spread_Line_Item__c,
                    Spread_Line_Item__r.Normalized_Line__c, Spread_Line_Item__r.Statement_Type__c,
                    Spread_Line_Item__r.Fiscal_Period__c, Spread_Line_Item__r.Material__c
@@ -83,6 +83,7 @@ public with sharing class GetSelectedReportFacts {
                 lineFact += ' | path=' + safeName(result.Path_Key__c)
                     + ' manual=' + String.valueOf(result.Manual_Value__c)
                     + ' candidate=' + String.valueOf(result.Candidate_Value__c)
+                    + ' reviewed=' + String.valueOf(result.Reviewed_Value__c)
                     + ' variance=' + String.valueOf(result.Variance_Amount__c)
                     + ' status=' + safeName(result.Certification_Status__c);
             }

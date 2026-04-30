@@ -41,7 +41,7 @@ public with sharing class ExplainCreditImpact {
         List<String> facts = new List<String>();
 
         for (Spread_Path_Result__c result : [
-            SELECT Id, Path_Key__c, Manual_Value__c, Candidate_Value__c, Variance_Amount__c,
+            SELECT Id, Path_Key__c, Manual_Value__c, Candidate_Value__c, Reviewed_Value__c, Variance_Amount__c,
                    Variance_Pct__c, Certification_Status__c, Exception_Flag__c, Error_Type__c,
                    Spread_Line_Item__r.Normalized_Line__c, Spread_Line_Item__r.Material__c,
                    Spread_Line_Item__r.Statement_Type__c, Spread_Line_Item__r.Fiscal_Period__c,
@@ -65,6 +65,7 @@ public with sharing class ExplainCreditImpact {
                 + ' | path=' + safeName(result.Path_Key__c)
                 + ' | manual=' + String.valueOf(result.Manual_Value__c)
                 + ' | candidate=' + String.valueOf(result.Candidate_Value__c)
+                + ' | reviewed=' + String.valueOf(result.Reviewed_Value__c)
                 + ' | variance=' + String.valueOf(result.Variance_Amount__c)
                 + ' | variance_pct=' + String.valueOf(result.Variance_Pct__c)
                 + ' | status=' + safeName(result.Certification_Status__c)

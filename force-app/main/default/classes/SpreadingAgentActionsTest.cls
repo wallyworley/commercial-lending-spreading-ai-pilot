@@ -49,4 +49,51 @@ private class SpreadingAgentActionsTest {
         System.assertEquals('Pilot Run Id is required.', summaries[0].errorMessage);
         System.assertEquals('Pilot Run Id is required.', errors[0].errorMessage);
     }
+
+    @IsTest
+    static void includesReviewedValuesInAgentFactOutputs() {
+        Spread_Pilot_Run__c run = SpreadTestDataFactory.createPilotRun();
+        Spread_Document__c document = SpreadTestDataFactory.createDocument(run.Id);
+        Spread_Line_Item__c revenue = SpreadTestDataFactory.createLineItem(run.Id, document.Id, 'revenue', true);
+
+        Spread_Path_Result__c result = SpreadTestDataFactory.createPathResult(
+            run.Id,
+            document.Id,
+            revenue.Id,
+            'salesforce_native_staging',
+            1000000,
+            950000,
+            false,
+            'Certified'
+        );
+        result.Reviewed_Value__c = 975000;
+        update result;
+
+        SpreadingPilotContextInput factsRequest = new SpreadingPilotContextInput();
+        factsRequest.pilotRunId = String.valueOf(run.Id);
+
+        SpreadingCreditImpactInput impactRequest = new SpreadingCreditImpactInput();
+        impactRequest.pathResultIds = new List<String>{ String.valueOf(result.Id) };
+
+        Test.startTest();
+        List<SpreadingReportFactsOutput> facts = GetSelectedReportFacts.getFacts(
+            new List<SpreadingPilotContextInput>{ factsRequest }
+        );
+        List<SpreadingCreditImpactOutput> impacts = ExplainCreditImpact.explain(
+            new List<SpreadingCreditImpactInput>{ impactRequest }
+        );
+        Test.stopTest();
+
+        Assert.areEqual(1, facts.size());
+        Assert.isTrue(
+            facts[0].selectedFactsSummary.contains('reviewed=975000'),
+            'Selected report facts should include the reviewed override value.'
+        );
+
+        Assert.areEqual(1, impacts.size());
+        Assert.isTrue(
+            impacts[0].facts.contains('| reviewed=975000'),
+            'Credit impact facts should include the reviewed override value.'
+        );
+    }
 }

@@ -25,6 +25,10 @@ public with sharing class SpreadWorkbenchController {
         @AuraEnabled public String pathKey;
         @AuraEnabled public Decimal manualValue;
         @AuraEnabled public Decimal candidateValue;
+        @AuraEnabled public Decimal reviewedValue;
+        @AuraEnabled public String reviewedReason;
+        @AuraEnabled public Id reviewedById;
+        @AuraEnabled public Datetime reviewedAt;
         @AuraEnabled public Decimal varianceAmount;
         @AuraEnabled public Decimal variancePct;
         @AuraEnabled public String certificationStatus;
@@ -267,6 +271,7 @@ public with sharing class SpreadWorkbenchController {
 
         for (Spread_Path_Result__c result : [
             SELECT Id, Path_Key__c, Manual_Value__c, Candidate_Value__c,
+                   Reviewed_Value__c, Reviewed_Reason__c, Reviewed_By__c, Reviewed_At__c,
                    Variance_Amount__c, Variance_Pct__c, Certification_Status__c,
                    Exception_Flag__c, Error_Type__c, Spread_Line_Item__c, Primary_Evidence__c
             FROM Spread_Path_Result__c
@@ -283,6 +288,10 @@ public with sharing class SpreadWorkbenchController {
             pr.pathKey = result.Path_Key__c;
             pr.manualValue = result.Manual_Value__c;
             pr.candidateValue = result.Candidate_Value__c;
+            pr.reviewedValue = result.Reviewed_Value__c;
+            pr.reviewedReason = result.Reviewed_Reason__c;
+            pr.reviewedById = result.Reviewed_By__c;
+            pr.reviewedAt = result.Reviewed_At__c;
             pr.varianceAmount = result.Variance_Amount__c;
             pr.variancePct = result.Variance_Pct__c;
             pr.certificationStatus = result.Certification_Status__c;

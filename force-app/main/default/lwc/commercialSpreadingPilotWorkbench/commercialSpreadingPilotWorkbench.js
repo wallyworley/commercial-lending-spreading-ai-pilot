@@ -9,6 +9,7 @@ import calculateForRun from '@salesforce/apex/SpreadScorecardService.calculateFo
 import certifyPathResults from '@salesforce/apex/SpreadCertificationService.certifyPathResults';
 import rejectPathResults from '@salesforce/apex/SpreadCertificationService.rejectPathResults';
 import setManualBaseline from '@salesforce/apex/SpreadManualBaselineService.setManualBaseline';
+import setReviewedValue from '@salesforce/apex/SpreadAnalystOverrideService.setReviewedValue';
 import onUpload from '@salesforce/apex/SpreadDocumentService.onUpload';
 import getDocuments from '@salesforce/apex/SpreadDocumentService.getDocuments';
 import parseDocument from '@salesforce/apex/SpreadDocumentService.parseDocument';
@@ -88,6 +89,12 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
     baselineReason = '';
     baselineLineLabel = '';
     baselinePeriodLabel = '';
+    isOverrideDialogOpen = false;
+    overridePathResultId = null;
+    overrideAmount = null;
+    overrideReason = '';
+    overrideLineLabel = '';
+    overridePeriodLabel = '';
 
     @track documents = [];
     reviewDocumentOptions = [{ label: 'All Documents', value: '' }];
@@ -187,6 +194,13 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
             || this.baselineAmount === null
             || this.baselineAmount === undefined
             || !String(this.baselineReason || '').trim();
+    }
+
+    get isOverrideSaveDisabled() {
+        return this.isLoadingReview
+            || this.overrideAmount === null
+            || this.overrideAmount === undefined
+            || !String(this.overrideReason || '').trim();
     }
 
     get reviewRowsWithSelection() {
@@ -461,6 +475,62 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
         this.baselinePeriodLabel = '';
     }
 
+    handleOpenOverrideDialog(event) {
+        const pathResultId = event.currentTarget.dataset.pathResultId;
+        const reviewedValue = event.currentTarget.dataset.reviewedValue;
+        const candidateValue = event.currentTarget.dataset.candidateValue;
+        const lineLabel = event.currentTarget.dataset.lineLabel;
+        const periodLabel = event.currentTarget.dataset.periodLabel;
+
+        this.overridePathResultId = pathResultId;
+        this.overrideAmount = reviewedValue === undefined || reviewedValue === null || reviewedValue === ''
+            ? candidateValue
+            : reviewedValue;
+        this.overrideReason = '';
+        this.overrideLineLabel = lineLabel || '';
+        this.overridePeriodLabel = periodLabel || '';
+        this.isOverrideDialogOpen = true;
+    }
+
+    handleOverrideAmountChange(event) {
+        this.overrideAmount = event.detail.value;
+    }
+
+    handleOverrideReasonChange(event) {
+        this.overrideReason = event.target.value;
+    }
+
+    handleOverrideDialogCancel() {
+        this.isOverrideDialogOpen = false;
+        this.overridePathResultId = null;
+        this.overrideAmount = null;
+        this.overrideReason = '';
+        this.overrideLineLabel = '';
+        this.overridePeriodLabel = '';
+    }
+
+    async handleOverrideDialogSave() {
+        this.isLoadingReview = true;
+        this.clearMessages();
+        try {
+            await setReviewedValue({
+                pathResultId: this.overridePathResultId,
+                reviewedValue: Number(this.overrideAmount),
+                reason: this.overrideReason
+            });
+            this.message = 'Analyst override saved. The path result is back in Uncertified status until it is reviewed again.';
+            this.handleOverrideDialogCancel();
+            await this.loadReviewPage();
+            this.materialErrors = this.formatMaterialErrors(
+                await getMaterialErrors({ pilotRunId: this.selectedRunId })
+            );
+        } catch (error) {
+            this.handleError(error, 'Unable to save analyst override.');
+        } finally {
+            this.isLoadingReview = false;
+        }
+    }
+
     async handleBaselineDialogSave() {
         this.isLoadingReview = true;
         this.clearMessages();
@@ -619,8 +689,11 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
                     pathResultId: pr.pathResultId,
                     manualValue: pr.manualValue,
                     candidateValue: pr.candidateValue,
+                    reviewedValue: pr.reviewedValue,
+                    reviewedReason: pr.reviewedReason,
                     manualFormatted: this.formatCurrency(pr.manualValue),
                     candidateFormatted: this.formatCurrency(pr.candidateValue),
+                    reviewedFormatted: this.formatCurrency(pr.reviewedValue),
                     varianceFormatted: hasManualBaseline ? this.formatCurrency(variance) : '—',
                     varianceClass: hasManualBaseline
                         ? (variance > 0 ? 'path-cell__value variance--positive' : variance < 0 ? 'path-cell__value variance--negative' : 'path-cell__value')
@@ -664,8 +737,11 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
 
         const cell = row.pathCells.find((pathCell) => pathCell.pathResultId) || row.pathCells[0];
         const hasManualBaseline = !!cell?.hasManualBaseline;
-        const amountFormatted = hasManualBaseline ? cell.manualFormatted : cell?.candidateFormatted;
-        const detailLabel = hasManualBaseline ? `Adjusted from ${cell?.candidateFormatted}` : 'Extracted';
+        const hasReviewedOverride = cell?.reviewedValue !== null && cell?.reviewedValue !== undefined;
+        const amountFormatted = hasReviewedOverride ? cell?.reviewedFormatted : cell?.candidateFormatted;
+        const detailLabel = hasReviewedOverride
+            ? `Reviewed from ${cell?.candidateFormatted}`
+            : (hasManualBaseline ? 'Extracted | baseline set' : 'Extracted');
 
         return {
             period,
@@ -680,7 +756,11 @@ export default class CommercialSpreadingPilotWorkbench extends LightningElement 
             hasManualBaseline,
             manualValue: cell?.manualValue,
             candidateValue: cell?.candidateValue,
-            baselineActionLabel: hasManualBaseline ? 'Edit Baseline' : 'Set Baseline'
+            reviewedValue: cell?.reviewedValue,
+            reviewedReason: cell?.reviewedReason,
+            hasReviewedOverride,
+            baselineActionLabel: hasManualBaseline ? 'Edit Baseline' : 'Set Baseline',
+            overrideActionLabel: hasReviewedOverride ? 'Edit Override' : 'Set Override'
         };
     }
 

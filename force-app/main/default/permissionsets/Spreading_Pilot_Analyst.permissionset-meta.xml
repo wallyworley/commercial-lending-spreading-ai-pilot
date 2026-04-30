@@ -29,6 +29,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>SpreadAnalystOverrideService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>SpreadCertificationService</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -459,6 +463,26 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Spread_Path_Result__c.Primary_Evidence__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Spread_Path_Result__c.Reviewed_At__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Spread_Path_Result__c.Reviewed_By__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Spread_Path_Result__c.Reviewed_Reason__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Spread_Path_Result__c.Reviewed_Value__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

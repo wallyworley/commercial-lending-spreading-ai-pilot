@@ -85,6 +85,8 @@ private class SpreadWorkbenchControllerTest {
             'Certified'
         );
         secondResult.Primary_Evidence__c = evidence.evidenceId;
+        secondResult.Reviewed_Value__c = 460000;
+        secondResult.Reviewed_Reason__c = 'Normalized per analyst review.';
         update secondResult;
 
         Test.startTest();
@@ -103,6 +105,8 @@ private class SpreadWorkbenchControllerTest {
         System.assertEquals('ebitda', page.lines[0].normalizedLine);
         System.assertEquals(1, page.lines[0].pathResults.size(), 'Expected one path result for the filtered line.');
         System.assertNotEquals(null, page.lines[0].pathResults[0].primaryEvidenceId, 'Expected evidence link to be exposed to the workbench.');
+        System.assertEquals(460000, page.lines[0].pathResults[0].reviewedValue, 'Expected reviewed override to be exposed to the workbench.');
+        System.assertEquals('Normalized per analyst review.', page.lines[0].pathResults[0].reviewedReason);
     }
 
     @IsTest

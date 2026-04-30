@@ -55,6 +55,10 @@ public with sharing class SpreadDocumentRecordPageController {
         @AuraEnabled public String normalizedLine;
         @AuraEnabled public Decimal manualValue;
         @AuraEnabled public Decimal candidateValue;
+        @AuraEnabled public Decimal reviewedValue;
+        @AuraEnabled public String reviewedReason;
+        @AuraEnabled public Id reviewedById;
+        @AuraEnabled public Datetime reviewedAt;
         @AuraEnabled public Decimal varianceAmount;
         @AuraEnabled public Decimal variancePct;
         @AuraEnabled public String certificationStatus;
@@ -143,7 +147,8 @@ public with sharing class SpreadDocumentRecordPageController {
 
         List<Spread_Path_Result__c> pathResults = [
             SELECT Id, Name, Path_Key__c, Spread_Line_Item__r.Normalized_Line__c,
-                   Manual_Value__c, Candidate_Value__c, Variance_Amount__c, Variance_Pct__c,
+                   Manual_Value__c, Candidate_Value__c, Reviewed_Value__c, Reviewed_Reason__c,
+                   Reviewed_By__c, Reviewed_At__c, Variance_Amount__c, Variance_Pct__c,
                    Certification_Status__c, Exception_Flag__c, Error_Type__c, Primary_Evidence__c
             FROM Spread_Path_Result__c
             WHERE Spread_Document__c = :spreadDocumentId
@@ -160,6 +165,10 @@ public with sharing class SpreadDocumentRecordPageController {
             row.normalizedLine = pathResult.Spread_Line_Item__r == null ? null : pathResult.Spread_Line_Item__r.Normalized_Line__c;
             row.manualValue = pathResult.Manual_Value__c;
             row.candidateValue = pathResult.Candidate_Value__c;
+            row.reviewedValue = pathResult.Reviewed_Value__c;
+            row.reviewedReason = pathResult.Reviewed_Reason__c;
+            row.reviewedById = pathResult.Reviewed_By__c;
+            row.reviewedAt = pathResult.Reviewed_At__c;
             row.varianceAmount = pathResult.Variance_Amount__c;
             row.variancePct = pathResult.Variance_Pct__c;
             row.certificationStatus = pathResult.Certification_Status__c;
